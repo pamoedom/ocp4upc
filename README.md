@@ -14,7 +14,7 @@ $ ./ocp4upc.sh 4.2.18
 [INFO] Result exported as 'stable-4.3.svg'
 [INFO] Result exported as 'fast-4.3.svg'
 ~~~
-![fast-4.3 example](https://github.com/pamoedom/ocp4upc/images/fast-4.3.png)
+![fast-4.3 example](https://github.com/pamoedom/ocp4upc/blob/master/examples/fast-4.3.png)
 ## Dependencies
 - `curl` <https://curl.haxx.se/>
 - `jq` <http://stedolan.github.io/jq/>
