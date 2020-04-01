@@ -1,10 +1,10 @@
 # ocp4upc
 OCP4 Upgrade Paths Checker
 ## Description
-This is a script to check the possible minor upgrade paths using production-ready **OpenShift4** _stable_ & _fast_ [channels](https://docs.openshift.com/container-platform/4.3/updating/updating-cluster-between-minor.html#understanding-upgrade-channels_updating-cluster-between-minor).
+This is a script to check the possible minor upgrade paths using production-ready OpenShift 4 **stable** and **fast**_ [channels](https://docs.openshift.com/container-platform/4.3/updating/updating-cluster-between-minor.html#understanding-upgrade-channels_updating-cluster-between-minor).
 ## Usage
 ~~~
-`$ ./ocp4upc.sh source_version [arch]`
+$ ./ocp4upc.sh source_version [arch]
 ~~~
 ## Dependencies
 - `curl` <https://curl.haxx.se/>
