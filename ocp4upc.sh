@@ -50,7 +50,7 @@ ORG="salmon"
 DST="yellowgreen"
 [[ -z $2 ]] && ARC="amd64" || ARC=$2
 POS=""
-PTH="/tmp/`echo $0 | cut -d. -f2`"
+PTH="/tmp/${0##*/}"
 BIN="/usr/bin"
 CHA=(stable fast)
 REQ=(curl skopeo jq dot)
