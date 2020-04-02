@@ -1,5 +1,5 @@
 #!/bin/sh
-VERSION="1.0"
+VERSION="1.1"
 
 #INFO = (
 #          author      => 'Pedro Amoedo'
@@ -12,6 +12,9 @@ VERSION="1.0"
 #CHANGELOG = (
 #              * v1.0
 #                - Initial commit
+#              * v1.1
+#                - Checking releases against quay API
+#                - Removing skopeo prerequisite
 #            );
 
 #VARs DESCRIPTION
@@ -40,7 +43,8 @@ cout(){
 
 #VARIABLES
 [[ $# -lt 1 ]] && usage
-URL='api.openshift.com/api/upgrades_info/v1/graph'
+GPH='https://api.openshift.com/api/upgrades_info/v1/graph'
+REL='https://quay.io/api/v1/repository/openshift-release-dev/ocp-release'
 VER=$1
 MAJ=`echo ${VER} | cut -d. -f1`
 MIN=`echo ${VER} | cut -d. -f2`
@@ -53,13 +57,17 @@ POS=""
 PTH="/tmp/${0##*/}"
 BIN="/usr/bin"
 CHA=(stable fast)
-REQ=(curl skopeo jq dot)
+REQ=(curl jq dot)
 RES=()
 LTS=""
 
 #PREREQUISITES
+
+## all tools available?
 cout "INFO" "Checking prerequisites... " "-n"
 for tool in ${REQ[@]}; do ${BIN}/which $tool &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "'$tool' not present. Aborting" && exit 1; done
+
+## tmp folder writable?
 if [ -d ${PTH} ]
   then
     ${BIN}/touch ${PTH}/test; [ $? -ne 0 ] && cout "ERROR" "Unable to write in ${PTH}. Aborting" && exit 1
@@ -68,23 +76,24 @@ if [ -d ${PTH} ]
 fi
 cout "OK" ""
 
-## TODO: Do this with curl against the API to avoid installing skopeo?
+## valid release?
 cout "INFO" "Checking if '${VER}' (${ARC}) is a valid release... " "-n"
+${BIN}/curl -sH 'Accept:application/json' "${REL}" | ${BIN}/jq . > ${PTH}/ocp4-releases.json
 if [ "${ARC}" = "amd64" ]
   then
-    ${BIN}/skopeo inspect docker://quay.io/openshift-release-dev/ocp-release:${VER}-x86_64 &>/dev/null
+    ${BIN}/grep "\"${VER}-x86_64\"" ${PTH}/ocp4-releases.json &>/dev/null
     # for amd64 make an extra attempt without -x86_64 because old releases do not contain that suffix
     if [ $? -ne 0 ]
       then
-        ${BIN}/skopeo inspect docker://quay.io/openshift-release-dev/ocp-release:${VER} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
+        ${BIN}/grep "\"${VER}\"" ${PTH}/ocp4-releases.json &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
     fi
   else
-    ${BIN}/skopeo inspect docker://quay.io/openshift-release-dev/ocp-release:${VER}-${ARC} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
+    ${BIN}/grep "\"${VER}-${ARC}\"" ${PTH}/ocp4-releases.json &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
 fi
 cout "OK" ""
 
-#OBTAIN JSON
-for chan in ${CHA[@]}; do ${BIN}/curl -sH 'Accept:application/json' "https://${URL}?channel=${chan}-${TRG}&arch=${ARC}" > ${PTH}/${chan}-${TRG}.json; [ $? -ne 0 ] && cout "ERROR" "Unable to curl 'https://${URL}?channel=${chan}-${TRG}&arch=${ARC}'. Aborting" && exit 1; done
+#OBTAIN UPGRADE PATHS JSONs
+for chan in ${CHA[@]}; do ${BIN}/curl -sH 'Accept:application/json' "${GPH}?channel=${chan}-${TRG}&arch=${ARC}" > ${PTH}/${chan}-${TRG}.json; [ $? -ne 0 ] && cout "ERROR" "Unable to curl 'https://${GPH}?channel=${chan}-${TRG}&arch=${ARC}'. Aborting" && exit 1; done
 
 ##capture the latest target version within fast channel (TODO: do this against the API directly?)
 LTS=`${BIN}/cat ${PTH}/fast-${TRG}.json | ${BIN}/jq . | ${BIN}/grep "\"${TRG}." | ${BIN}/cut -d'"' -f4 | ${BIN}/sort -urV | ${BIN}/head -1`
