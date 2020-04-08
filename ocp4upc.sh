@@ -57,7 +57,7 @@ POS=""
 PTH="/tmp/${0##*/}"
 BIN="/usr/bin"
 CHA=(stable fast)
-REQ=(curl jq dot)
+REQ=(curl jq dot bc)
 RES=()
 LTS=""
 
