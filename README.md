@@ -19,5 +19,6 @@ $ ./ocp4upc.sh 4.2.18
 - `curl` <https://curl.haxx.se/>
 - `jq` <http://stedolan.github.io/jq/>
 - `dot` <http://www.graphviz.org/>
+- `bc` <http://www.gnu.org/software/bc/>
 ## Additional notes
 For more info on how to perform a minor upgrade using `oc` cli, please refer to this [solution](https://access.redhat.com/solutions/4606811) (subscription needed).
