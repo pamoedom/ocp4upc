@@ -48,7 +48,7 @@ REL='https://quay.io/api/v1/repository/openshift-release-dev/ocp-release'
 VER=$1
 MAJ=`echo ${VER} | cut -d. -f1`
 MIN=`echo ${VER} | cut -d. -f2`
-TRG="${MAJ}.`echo ${MIN}+1 | bc`"
+[[ "$TRG" == "" ]] && TRG="${MAJ}.`echo ${MIN}+1 | bc`"
 EDG="blue"
 ORG="salmon"
 DST="yellowgreen"
@@ -60,6 +60,8 @@ CHA=(stable fast)
 REQ=(curl jq dot bc)
 RES=()
 LTS=""
+
+cout "INFO" "Target release is $TRG"
 
 #PREREQUISITES
 
