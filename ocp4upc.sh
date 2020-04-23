@@ -1,5 +1,5 @@
 #!/bin/sh
-VERSION="1.1"
+VERSION="1.2"
 
 #INFO = (
 #          author      => 'Pedro Amoedo'
@@ -15,6 +15,9 @@ VERSION="1.1"
 #              * v1.1
 #                - Checking releases against quay API
 #                - Removing skopeo prerequisite
+#              * v1.2
+#                - Adding timestamp in the graph title (rfc-3339)
+#                - Fixed prerequisites list (bc)
 #            );
 
 #VARs DESCRIPTION
@@ -46,16 +49,16 @@ cout(){
 GPH='https://api.openshift.com/api/upgrades_info/v1/graph'
 REL='https://quay.io/api/v1/repository/openshift-release-dev/ocp-release'
 VER=$1
-MAJ=`echo ${VER} | cut -d. -f1`
-MIN=`echo ${VER} | cut -d. -f2`
-TRG="${MAJ}.`echo ${MIN}+1 | bc`"
+BIN="/usr/bin"
+MAJ=`${BIN}/echo ${VER} | cut -d. -f1`
+MIN=`${BIN}/echo ${VER} | cut -d. -f2`
+TRG="${MAJ}.`${BIN}/echo ${MIN}+1 | ${BIN}/bc`"
 EDG="blue"
 ORG="salmon"
 DST="yellowgreen"
 [[ -z $2 ]] && ARC="amd64" || ARC=$2
 POS=""
 PTH="/tmp/${0##*/}"
-BIN="/usr/bin"
 CHA=(stable fast)
 REQ=(curl jq dot bc)
 RES=()
@@ -144,7 +147,7 @@ done
 
 #LABELING
 for chan in ${RES[@]}; do sed -i -e 's/TITLE/'"${chan}"'/g' ${PTH}/${chan}-${TRG}.gv; done
-for chan in ${RES[@]}; do sed -i -e 's/CHANNEL/"'"${chan}"'-'"${TRG}"'"/g' ${PTH}/${chan}-${TRG}.gv; done
+for chan in ${RES[@]}; do sed -i -e 's/CHANNEL/"'"${chan}"'-'"${TRG}"' \('"$(${BIN}/date --rfc-3339=date)"'\)"/g' ${PTH}/${chan}-${TRG}.gv; done
 
 #DRAW & EXPORT
 for chan in ${RES[@]}; do ${BIN}/dot -Tsvg ${PTH}/${chan}-${TRG}.gv -o ${chan}-${TRG}.svg; [ $? -ne 0 ] && cout "ERROR" "Unable to export the results. Aborting" && exit 1 || cout "INFO" "Result exported as '${chan}-${TRG}.svg'"; done
