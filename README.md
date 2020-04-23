@@ -1,16 +1,16 @@
 # ocp4upc
 OCP4 Upgrade Paths Checker
 ## Description
-This script generates a graphical output of the possible minor upgrade paths using production-ready OpenShift 4 **stable** and **fast** [channels](https://docs.openshift.com/container-platform/4.3/updating/updating-cluster-between-minor.html#understanding-upgrade-channels_updating-cluster-between-minor).
+This script generates a graphical output of the possible OpenShift4 **minor upgrade paths** using production-ready **stable** and **fast** [channels](https://docs.openshift.com/container-platform/4.3/updating/updating-cluster-between-minor.html#understanding-upgrade-channels_updating-cluster-between-minor).
 ## Usage
 ~~~
 $ ./ocp4upc.sh source_version [arch]
 ~~~
 ## Example
 ~~~
-$ ./ocp4upc.sh 4.2.18
+$ ./ocp4upc.sh 4.2.25
 [INFO] Checking prerequisites... [OK] 
-[INFO] Checking if '4.2.18' (amd64) is a valid release... [OK] 
+[INFO] Checking if '4.2.25' (amd64) is a valid release... [OK] 
 [INFO] Result exported as 'stable-4.3.svg'
 [INFO] Result exported as 'fast-4.3.svg'
 ~~~
