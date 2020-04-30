@@ -133,7 +133,7 @@ for chan in ${CHA[@]}; do ${BIN}/jq -r "${JQ_SCRIPT}" ${PTH}/${chan}-${TRG}.json
 #DISCARD CHANNELS & COLORIZE EDGES
 for chan in ${CHA[@]}
 do
-  POS="" && POS=`grep ${VER} ${PTH}/${chan}-${TRG}.gv | awk {'print $1'}`
+  POS="" && POS=`grep "\"${VER}\"" ${PTH}/${chan}-${TRG}.gv | awk {'print $1'}`
   if [ "${POS}" = "" ]
     then
      cout "WARN" "Skipping channel '${chan}-${TRG}', version '${VER}' not found."
