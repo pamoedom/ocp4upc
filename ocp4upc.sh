@@ -1,5 +1,5 @@
 #!/bin/sh
-VERSION="1.4"
+VERSION="1.5"
 BIN="/usr/bin"
 
 #INFO = (
@@ -11,6 +11,12 @@ BIN="/usr/bin"
 #       );
 
 #CHANGELOG = (
+#              * v1.5
+#                - Fixing multiple LTS points if stable!=fast (max 3)
+#                - Include default minor version check if 4.x mode
+#                - Adding JQ_SCRIPT parsing to allow multiple LTS
+#                - Fixing default channels order (stable,fast), no longer relevant
+#                - Indentation homogenization (no tabs)
 #              * v1.4
 #                - Modularization everywhere
 #                - Default channel reports if no errata provided
@@ -51,14 +57,14 @@ ansi_colors(){
 #USAGE
 usage(){
   ${BIN}/echo "---------------------------------------------"
-  ${BIN}/echo "OCP4 Upgrade Paths Checker (fast,stable) v${VERSION}"
+  ${BIN}/echo "OCP4 Upgrade Paths Checker (stable,fast) v${VERSION}"
   ${BIN}/echo ""
   ${BIN}/echo "Usage:"
   ${BIN}/echo "$0 source_version [arch]"
   ${BIN}/echo ""
   ${BIN}/echo "Source Version:"
-  ${BIN}/echo "4.x        Generate 4.x channels with default paths"
-  ${BIN}/echo "4.x.z      Generate 4.y channels with colorized paths"
+  ${BIN}/echo "4.x        Use same minor 4.x channels (e.g. 4.2)"
+  ${BIN}/echo "4.x.z      Use next minor 4.y channels & colorize (e.g. 4.2.26)"
   ${BIN}/echo ""
   ${BIN}/echo "Arch:"
   ${BIN}/echo "amd64      x86_64 (default)"
@@ -88,13 +94,14 @@ declare_vars(){
   EDGt="red"
   ORG="salmon"
   DST="yellowgreen"
+  DEF="lightgrey"
   [[ -z ${args[2]} ]] && ARC="amd64" || ARC=${args[2]}
   POSv=""
   POSc=""
   PTH="/tmp/${cmd##*/}" #generate the tmp folder based on the current script name
-  CHA=(fast stable) #the order here is relevant to colorize the LTS per channel, see JQ_SCRIPT below.
+  CHA=(stable fast)
   REQ=(curl jq dot bc)
-  RES=(fast stable) #array of resulting channels in case of discard, initiliazed to allow TRG=VER
+  RES=(stable fast) #array of resulting channels in case of discard, initiliazed here to allow 4.x mode
   LTS=() #array of latest target releases per channel.
   EXT=() #array of indirect nodes (if any)
 }
@@ -117,47 +124,59 @@ check_prereq(){
 
 #RELEASE CHECKING
 check_release(){
-  cout "INFO" "Checking if '${VER}' (${ARC}) is a valid release... " "-n"
+  [[ "${ERT}" != "" ]] && lver="${VER}" || lver="${VER}.0"
+  cout "INFO" "Checking if '${lver}' (${ARC}) is a valid release... " "-n"
   ${BIN}/curl -sH 'Accept:application/json' "${REL}" | ${BIN}/jq . > ${PTH}/ocp4-releases.json
   if [ "${ARC}" = "amd64" ]
     then
-      ${BIN}/grep "\"${VER}-x86_64\"" ${PTH}/ocp4-releases.json &>/dev/null
-    ##for amd64 make an extra attempt without -x86_64 because old releases do not contain that suffix
-    if [ $? -ne 0 ]
-      then
-        ${BIN}/grep "\"${VER}\"" ${PTH}/ocp4-releases.json &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
-    fi
-  else
-    ${BIN}/grep "\"${VER}-${ARC}\"" ${PTH}/ocp4-releases.json &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
+      ${BIN}/grep "\"${lver}-x86_64\"" ${PTH}/ocp4-releases.json &>/dev/null
+      ##for amd64 make an extra attempt without -x86_64 because old releases do not contain that suffix
+      if [ $? -ne 0 ]
+        then
+          ${BIN}/grep "\"${lver}\"" ${PTH}/ocp4-releases.json &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
+      fi
+    else
+      ${BIN}/grep "\"${lver}-${ARC}\"" ${PTH}/ocp4-releases.json &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
   fi
   cout "OK" ""
 }
 
 #OBTAIN UPGRADE PATHS JSONs
-upgrade_paths(){
+get_paths(){
   for chan in ${CHA[@]}; do ${BIN}/curl -sH 'Accept:application/json' "${GPH}?channel=${chan}-${TRG}&arch=${ARC}" > ${PTH}/${chan}-${TRG}.json; [ $? -ne 0 ] && cout "ERROR" "Unable to curl 'https://${GPH}?channel=${chan}-${TRG}&arch=${ARC}'. Aborting" && exit 1; done
+}
 
-  ##capture the latest target version within each channel (TODO: do this against the API?)
-  for chan in ${CHA[@]}; do LTS=("${LTS[@]}" "$(${BIN}/cat ${PTH}/${chan}-${TRG}.json | ${BIN}/jq . | ${BIN}/grep "\"${TRG}." | ${BIN}/cut -d'"' -f4 | ${BIN}/sort -urV | ${BIN}/head -1)"); done
+#CAPTURE TARGETS ($maximum_targets) ##TODO: do this against the API instead?
+capture_lts(){
+  ##capture a maximum of $1 latest targets from the fast channel
+  LTS=("$(${BIN}/cat ${PTH}/${CHA[1]}-${TRG}.json | ${BIN}/jq . | ${BIN}/grep "\"${TRG}." | ${BIN}/cut -d'"' -f4 | ${BIN}/sort -urV | ${BIN}/head -$1)")
+}
 
-  #JSON to GV
-  JQ_SCRIPT='"digraph TITLE {\n  labelloc=t;\n  rankdir=BT;\n  label=CHANNEL" as $header |
+#JSON to GV
+json2gv(){
+  ##prepare the raw jq filter
+  JQ_SCRIPT=$(${BIN}/echo '"digraph TITLE {\n  labelloc=t;\n  rankdir=BT;\n  label=CHANNEL" as $header |
     (
       [
         .nodes |
         to_entries[] |
         "  " + (.key | tostring) +
-               " [ label=\"" + .value.version + "\"" + (
-                 if .value.metadata.url then ",url=\"" + .value.metadata.url + "\"" else "" end
-               ) + (
-	         if .value.version == "'"${VER}"'" then ",shape=polygon,sides=5,peripheries=3,style=filled,color='"${ORG}"'"
-	         elif .value.version == "'"${LTS[0]}"'" then ",shape=square,style=filled,color='"${DST}"'"
-	         elif .value.version == "'"${LTS[1]}"'" then ",shape=square,style=filled,color='"${DST}"'"
-                 elif .value.version >= "'"${TRG}"'" then ",shape=square,style=filled,color=lightgrey"
-                 else ",shape=ellipse,style=filled,color=lightgrey"
-                 end
-               ) +
-               " ];"
+          " [ label=\"" + .value.version + "\"" + (
+            if .value.metadata.url then ",url=\"" + .value.metadata.url + "\"" else "" end
+	    ) + (')
+  if [ "${ERT}" != "" ]
+    then
+      JQ_SCRIPT=${JQ_SCRIPT}$(${BIN}/echo '            if .value.version == "'"${VER}"'" then ",shape=polygon,sides=5,peripheries=3,style=filled,color='"${ORG}"'"')
+    else
+      JQ_SCRIPT=${JQ_SCRIPT}$(${BIN}/echo '            if .value.version == "" then ",shape=polygon,sides=5,peripheries=3,style=filled,color='"${ORG}"'"')
+  fi
+
+  for target in ${LTS[@]}; do JQ_SCRIPT=${JQ_SCRIPT}$(${BIN}/echo '            elif .value.version == "'"${target}"'" then ",shape=square,style=filled,color='"${DST}"'"'); done
+  JQ_SCRIPT=${JQ_SCRIPT}$(${BIN}/echo '            elif .value.version >= "'"${TRG}"'" then ",shape=square,style=filled,color=lightgrey"
+            else ",shape=ellipse,style=filled,color='"${DEF}"'"
+            end
+          ) +
+          " ];"
       ] | join("\n")
     ) as $nodes |
     (
@@ -166,12 +185,13 @@ upgrade_paths(){
         "  " + (.[0] | tostring) + "->" + (.[1] | tostring) + ";"
       ] | join("\n")
     ) as $edges |
-    [$header, $nodes, $edges, "}"] | join("\n")
-  '
+    [$header, $nodes, $edges, "}"] | join("\n")')
+
+  ##generate the gv files
   for chan in ${CHA[@]}; do ${BIN}/jq -r "${JQ_SCRIPT}" ${PTH}/${chan}-${TRG}.json > ${PTH}/${chan}-${TRG}.gv; done
 }
 
-#DISCARD CHANNELS & COLORIZE EDGES (TODO: move this logic into JQ_SCRIPT?)
+#DISCARD CHANNELS & COLORIZE EDGES ##TODO: move this logic into JQ_SCRIPT?
 colorize(){
   RES=() #remove the array in case of discarding
   for chan in ${CHA[@]}
@@ -194,7 +214,7 @@ colorize(){
         for target in ${LTS[@]}
         do
           POSc="" && POSc=`grep "\"${target}\"" ${PTH}/${chan}-${TRG}.gv | awk {'print $1'}`
-	  if [ "${POSc}" != "" ]
+          if [ "${POSc}" != "" ]
             then
               for edge in ${EXT[@]}; do ${BIN}/sed -i -e 's/^\(\s\s'"${edge}"'->'"${POSc}"'.*\)\;$/\1 [color='"${EDG}"'\,style=dashed,label="Indirect"];/g' ${PTH}/${chan}-${TRG}.gv; done
               ##put different color to direct LTS edge (if any)
@@ -225,14 +245,17 @@ main(){
   ansi_colors
   declare_vars "$0" "${args[@]}"
   check_prereq
-  [[ "${ERT}" != "" ]] && check_release || cout "WARN" "No errata version detected, generating default ${VER} (${ARC}) channels..."
-  upgrade_paths
+  [[ "${ERT}" = "" ]] && cout "WARN" "No errata version detected, falling back to default '${TRG}' channels..."
+  check_release
+  get_paths
+  [[ "${ERT}" != "" ]] && capture_lts "3" #capture maximum 3 targets to allow stable!=fast and to avoid colorizing all 4.y nodes
+  json2gv
   [[ "${ERT}" != "" ]] && colorize
   labeling
   draw
 }
 
-#MAIN CALL
+#STARTING POINT
 [[ $# -lt 1 ]] && usage
 main "$@"
 
