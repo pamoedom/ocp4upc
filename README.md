@@ -9,7 +9,7 @@ $ ./ocp4upc.sh
 OCP4 Upgrade Paths Checker (stable,fast) v1.5
 
 Usage:
-/home/pamoedo/bin/ocp4upc source_version [arch]
+./ocp4upc.sh source_version [arch]
 
 Source Version:
 4.x        Use same minor 4.x channels (e.g. 4.2)
