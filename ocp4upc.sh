@@ -1,5 +1,5 @@
 #!/bin/sh
-VERSION="1.6"
+VERSION="1.7"
 BIN="/usr/bin"
 
 #INFO = (
@@ -11,6 +11,9 @@ BIN="/usr/bin"
 #       );
 
 #CHANGELOG = (
+#              * v1.7
+#                - Fixing non-default archs for 4.x mode
+#                - Adding arch & mode (bw for 4.x) on exported files
 #              * v1.6
 #                - Colorize all possible 4.y targets (no more hardcoded limit)
 #                - Reconfigure check_release to use parameters
@@ -54,21 +57,21 @@ BIN="/usr/bin"
 
 #USAGE
 usage(){
-  ${BIN}/echo "-----------------------------------------------------------"
+  ${BIN}/echo "---------------------------------------------------------"
   ${BIN}/echo "OCP4 Upgrade Paths Checker (stable & fast) v${VERSION}"
   ${BIN}/echo ""
   ${BIN}/echo "Usage:"
   ${BIN}/echo "$0 source_version [arch]"
   ${BIN}/echo ""
   ${BIN}/echo "Source Version:"
-  ${BIN}/echo "4.x        Same minor 4.x channels without color (e.g. 4.2)"
-  ${BIN}/echo "4.x.z      Next minor 4.y channels & colorize (e.g. 4.2.26)"
+  ${BIN}/echo "4.x        Target same minor channels (B&W) (e.g. 4.2)"
+  ${BIN}/echo "4.x.z      Target next minor channels (CLR) (e.g. 4.2.26)"
   ${BIN}/echo ""
   ${BIN}/echo "Arch:"
   ${BIN}/echo "amd64      x86_64 (default)"
   ${BIN}/echo "s390x      IBM System/390"
   ${BIN}/echo "ppc64le    POWER8 little endian"
-  ${BIN}/echo "-----------------------------------------------------------"
+  ${BIN}/echo "---------------------------------------------------------"
   exit 1
 }
 
@@ -138,21 +141,32 @@ check_prereq(){
   cout "OK" ""
 }
 
-#RELEASE CHECKING ($release)
+#RELEASE CHECKING
 check_release(){
-  lver=$1
-  cout "INFO" "Checking if '${lver}' (${ARC}) is a valid release... " "-n"
-  ${BIN}/curl -sH 'Accept:application/json' "${REL}" | ${BIN}/jq . > ${PTH}/ocp4-releases.json
-  if [ "${ARC}" = "amd64" ]
+  if [ "${ERT}" = "" ]
     then
-      ${BIN}/grep "\"${lver}-x86_64\"" ${PTH}/ocp4-releases.json &>/dev/null
-      ##for amd64 make an extra attempt without -x86_64 because old releases do not contain that suffix
-      if [ $? -ne 0 ]
+      cout "INFO" "Checking if '${VER}' (${ARC}) is a valid channel... " "-n"
+      ${BIN}/curl -sH 'Accept:application/json' "${REL}" | ${BIN}/jq . > ${PTH}/ocp4-releases.json
+      if [ "${ARC}" = "amd64" ]
         then
-          ${BIN}/grep "\"${lver}\"" ${PTH}/ocp4-releases.json &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
+          ${BIN}/grep "\"${VER}.*-x86_64\"" ${PTH}/ocp4-releases.json &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
+        else
+          ${BIN}/grep "\"${VER}.*-${ARC}\"" ${PTH}/ocp4-releases.json &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
       fi
     else
-      ${BIN}/grep "\"${lver}-${ARC}\"" ${PTH}/ocp4-releases.json &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
+      cout "INFO" "Checking if '${VER}' (${ARC}) is a valid release... " "-n"
+      ${BIN}/curl -sH 'Accept:application/json' "${REL}" | ${BIN}/jq . > ${PTH}/ocp4-releases.json
+      if [ "${ARC}" = "amd64" ]
+        then
+          ${BIN}/grep "\"${VER}-x86_64\"" ${PTH}/ocp4-releases.json &>/dev/null
+          ##for amd64 make an extra attempt without -x86_64 because old releases don't have any suffix
+          if [ $? -ne 0 ]
+            then
+              ${BIN}/grep "\"${VER}\"" ${PTH}/ocp4-releases.json &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
+          fi
+        else
+          ${BIN}/grep "\"${VER}-${ARC}\"" ${PTH}/ocp4-releases.json &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
+      fi
   fi
   cout "OK" ""
 }
@@ -248,8 +262,13 @@ labeling(){
 }
 
 #DRAW & EXPORT
-draw(){
-  for chan in ${RES[@]}; do ${BIN}/dot -Tsvg ${PTH}/${chan}-${TRG}.gv -o ${chan}-${TRG}_$(date +%Y%m%d).svg; [ $? -ne 0 ] && cout "ERROR" "Unable to export the results. Aborting" && exit 1 || cout "INFO" "Result exported as '${chan}-${TRG}_$(date +%Y%m%d).svg'"; done
+drawing(){
+  if [ "${ERT}" != "" ]
+    then
+      for chan in ${RES[@]}; do ${BIN}/dot -Tsvg ${PTH}/${chan}-${TRG}.gv -o ${chan}-${TRG}_${ARC}_$(date +%Y%m%d).svg; [ $? -ne 0 ] && cout "ERROR" "Unable to export the results. Aborting" && exit 1 || cout "INFO" "Result exported as '${chan}-${TRG}_${ARC}_$(date +%Y%m%d).svg'"; done
+    else
+      for chan in ${RES[@]}; do ${BIN}/dot -Tsvg ${PTH}/${chan}-${TRG}.gv -o ${chan}-${TRG}_${ARC}_bw_$(date +%Y%m%d).svg; [ $? -ne 0 ] && cout "ERROR" "Unable to export the results. Aborting" && exit 1 || cout "INFO" "Result exported as '${chan}-${TRG}_${ARC}_bw_$(date +%Y%m%d).svg'"; done
+  fi
 }
 
 #SCRIPT WORKFLOW ($args[])
@@ -257,13 +276,14 @@ main(){
   args=("$@")
   declare_vars "$0" "${args[@]}"
   check_prereq
-  [[ "${ERT}" = "" ]] && cout "WARN" "No errata version detected, falling back to default '${TRG}' channels..." && check_release "${VER}.0" || check_release "${VER}"
+  [[ "${ERT}" != "" ]] && cout "INFO" "Errata provided (4.x.z mode), targeting '${TRG}' channels." || cout "INFO" "No errata provided (mode 4.x), targeting '${TRG}' channels."
+  check_release
   get_paths
   [[ "${ERT}" != "" ]] && capture_lts
   json2gv
   [[ "${ERT}" != "" ]] && colorize
   labeling
-  draw
+  drawing
 }
 
 #STARTING POINT
