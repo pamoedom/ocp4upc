@@ -23,7 +23,7 @@ ppc64le    POWER8 little endian
 ~~~
 ## Example
 ~~~
-$ ./ocp4upc_test.sh 4.2.26
+$ ./ocp4upc.sh 4.2.26
 [INFO] Checking prerequisites... [OK] 
 [INFO] Errata provided (4.x.z mode), targeting '4.3' channels for upgrade path generation.
 [INFO] Checking if '4.2.26' (amd64) is a valid release... [OK] 
