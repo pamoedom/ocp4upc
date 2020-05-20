@@ -1,0 +1,54 @@
+*v2.0
+ - 4.x.z mode revamped, drawing only involved nodes/edges
+ - Removing backtricks and homogeneize with $()
+ - Optimizing 'sed' calls
+ - Improving indentation to make it more readable
+ - Improving exceptions catch & error messages
+ - Moving title to bottom 
+ - CHANGELOG externalized
+
+*v1.7
+ - Fixing non-default archs for 4.x mode
+ - Adding arch & mode (bw for 4.x) on exported files
+
+*v1.6
+ - Colorize all possible 4.y targets (no more hardcoded limit)
+ - Reconfigure check_release to use parameters
+ - Adding exception catch when calling jq
+ - Tmp folder cleanup to avoid rare conditions with jq
+ - Fixed a bug with sed pattern when colorizing Direct edges
+ - Merged all variables in the same function
+
+*v1.5
+ - Fixing multiple LTS points if stable!=fast (max 3)
+ - Include default minor version check if 4.x mode
+ - Adding JQ_SCRIPT parsing to allow multiple LTS
+ - Fixing default channels order (stable,fast), no longer relevant
+ - Indentation homogenization (no tabs)
+
+*v1.4
+ - Modularization everywhere
+ - Default channel reports if no errata provided
+ - Fixed multiple LTS direct edges when stable!=fast
+ - Added ARC into the graph title
+ - Improved the usage help
+
+*v1.3
+ - Fixing strict release parsing for ${POS}
+ - Enforcing ${BIN} path for all binaries
+ - ${LTS} for both channels
+ - Channels order swapped to properly match LTS
+ - Adding timestamp on exported files
+ - Colorize all edges reaching ${LTS}
+ - Some cosmetic changes
+
+*v1.2
+ - Adding timestamp in the graph title (rfc-3339)
+ - Fixed prerequisites list (bc)
+
+*v1.1
+ - Checking releases against quay API
+ - Removing skopeo prerequisite
+
+*v1.0
+ - Initial commit
