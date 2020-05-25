@@ -30,7 +30,7 @@ $ ./ocp4upc.sh 4.2.27
 [INFO] Result exported as 'stable-4.3_amd64_20200526.svg'
 [INFO] Result exported as 'fast-4.3_amd64_20200526.svg'
 ~~~
-[image=[src="examples/fast-4.3_amd64_20200526.png", alt="fast-4.3 upgrade paths example (20200526)", size="LG - Large", data-cp-size="100%", data-cp-align="center",  ]]
+![fast-4.3](https://github.com/pamoedom/ocp4upc/examples/fast-4.3_amd64_20200526.png)
 ## Dependencies
 - `curl` <https://curl.haxx.se/>
 - `jq` <http://stedolan.github.io/jq/>
