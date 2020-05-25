@@ -30,7 +30,7 @@ $ ./ocp4upc.sh 4.2.27
 [INFO] Result exported as 'stable-4.3_amd64_20200526.svg'
 [INFO] Result exported as 'fast-4.3_amd64_20200526.svg'
 ~~~
-![fast-4.3](https://github.com/pamoedom/ocp4upc/examples/fast-4.3_amd64_20200526.png)
+![fast-4.3](https://github.com/pamoedom/ocp4upc/blob/master/examples/fast-4.3_amd64_20200526.png)
 ## Dependencies
 - `curl` <https://curl.haxx.se/>
 - `jq` <http://stedolan.github.io/jq/>
