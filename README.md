@@ -6,7 +6,7 @@ This is just a bash script that generates a graphical output of the possible **m
 ~~~
 $ ./ocp4upc.sh
 -------------------------------------------------------------------
-OCP4 Upgrade Paths Checker (stable & fast channels) v2.0
+OCP4 Upgrade Paths Checker (stable & fast channels) v2.1
 
 Usage:
 ./ocp4upc.sh source_version [arch]
@@ -23,18 +23,17 @@ ppc64le    POWER8 little endian
 ~~~
 ## Example
 ~~~
-$ ./ocp4upc.sh 4.2.26
-[INFO] Checking prerequisites... [OK] 
+$ ./ocp4upc.sh 4.2.27
+[INFO] Checking prerequisites (curl jq dot)... [OK] 
 [INFO] Errata provided (4.x.z mode), targeting '4.3' channels for upgrade path generation.
-[INFO] Checking if '4.2.26' (amd64) is a valid release... [OK] 
-[INFO] Result exported as 'stable-4.3_amd64_20200520.svg'
-[INFO] Result exported as 'fast-4.3_amd64_20200520.svg'
+[INFO] Checking if '4.2.27' (amd64) is a valid release... [OK] 
+[INFO] Result exported as 'stable-4.3_amd64_20200526.svg'
+[INFO] Result exported as 'fast-4.3_amd64_20200526.svg'
 ~~~
-![fast-4.3 example](https://github.com/pamoedom/ocp4upc/blob/master/examples/fast-4.3_amd64_20200520.png)
+[image=[src="examples/fast-4.3_amd64_20200526.png", alt="fast-4.3 upgrade paths example (20200526)", size="LG - Large", data-cp-size="100%", data-cp-align="center",  ]]
 ## Dependencies
 - `curl` <https://curl.haxx.se/>
 - `jq` <http://stedolan.github.io/jq/>
 - `dot` <http://www.graphviz.org/>
-- `bc` <http://www.gnu.org/software/bc/>
 ## Additional notes
 For more info on how to perform a minor upgrade using [`oc`](https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/) cli, please refer to this [solution](https://access.redhat.com/solutions/4606811) (subscription needed).

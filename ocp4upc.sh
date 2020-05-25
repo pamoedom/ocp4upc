@@ -1,5 +1,8 @@
-#!/bin/sh
-VERSION="2.0"
+#!/usr/bin/env bash
+set -o pipefail
+set -o nounset
+
+VERSION="2.1"
 BIN="/usr/bin"
 
 #INFO = (
@@ -16,7 +19,7 @@ BIN="/usr/bin"
 #$2=architecture (optional), default is amd64
 
 #USAGE
-usage()
+function usage()
 {
   ${BIN}/echo "-------------------------------------------------------------------"
   ${BIN}/echo "OCP4 Upgrade Paths Checker (stable & fast channels) v${VERSION}"
@@ -36,14 +39,8 @@ usage()
   exit 1
 }
 
-#PRETTY PRINT ($type_of_msg,$string,$echo_opts)
-cout()
-{
-  ${BIN}/echo -n "[" && eval "\$$1" && ${BIN}/echo -n "$1" && $NORM && ${BIN}/echo -n "] " && ${BIN}/echo $3 "$2"
-}
-
 #VARIABLES ($filename,$args[])
-declare_vars()
+function declare_vars()
 {
   cmd="$1"
   args=("$@")
@@ -54,7 +51,7 @@ declare_vars()
 
   ##ARGs
   VER=${args[1]}
-  [[ -z ${args[2]} ]] && ARC="amd64" || ARC=${args[2]}
+  [[ -z ${args[2]-} ]] && ARC="amd64" || ARC=${args[2]}
 
   ##Misc
   PTH="/tmp/${cmd##*/}" #generate the tmp folder based on the current script name
@@ -64,7 +61,7 @@ declare_vars()
   MAJ=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f1)
   MIN=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f2)
   ERT=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f3) #errata version provided?
-  [[ "${ERT}" = "" ]] && TRG=${VER} || TRG="${MAJ}.$(${BIN}/echo ${MIN}+1 | ${BIN}/bc)"
+  [[ "${ERT}" = "" ]] && TRG=${VER} || TRG="${MAJ}.$(( ${MIN} + 1 ))"
 
   ##Edge & Node colors
   EDGs="blue" #source edges -> *
@@ -76,9 +73,9 @@ declare_vars()
 
   ##Various Arrays
   CHA=(stable fast) #array of production-ready channels
-  REQ=(curl jq dot bc) #array of pre-requisities
-  RES=(stable fast) #array of resulting channels in case of discard, initiliazed here to allow 4.x mode
-  LTS=() #array of latest target releases per channel.
+  REQ=(curl jq dot) #array of pre-requisities
+  RES=() #array of resulting channels in case of discard
+  for chan in "${CHA[@]}"; do declare -a "LTS_${chan}=()"; done #arrays of possible target releases per channel.
   IND=() #array of indirect nodes (if any)
   EXT=() #array of direct nodes (if any)
 
@@ -90,12 +87,19 @@ declare_vars()
   NORM="${BIN}/echo -en \\033[0;39m" #default
 }
 
+#PRETTY PRINT ($type_of_msg,$string,$echo_opts)
+function cout()
+{
+  [[ -z ${3-} ]] && opts="" || opts=$3
+  ${BIN}/echo -n "[" && eval "\$$1" && ${BIN}/echo -n "$1" && $NORM && ${BIN}/echo -n "] " && ${BIN}/echo ${opts} "$2"
+}
+
 #PREREQUISITES
-check_prereq()
+function check_prereq()
 {
   ##all tools available?
-  cout "INFO" "Checking prerequisites... " "-n"
-  for tool in ${REQ[@]}; do ${BIN}/which $tool &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "'$tool' not present. Aborting execution." && exit 1; done
+  cout "INFO" "Checking prerequisites ($(${BIN}/echo "${REQ[@]}"))... " "-n"
+  for tool in "${REQ[@]}"; do ${BIN}/which ${tool} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "'${tool}' not present. Aborting execution." && exit 1; done
 
   ##tmp folder writable?
   if [ -d ${PTH} ]; then
@@ -108,11 +112,11 @@ check_prereq()
 }
 
 #RELEASE CHECKING
-check_release()
+function check_release()
 {
   ${BIN}/curl -sH 'Accept:application/json' "${REL}" | ${BIN}/jq . > ${PTH}/${RELf}; [ $? -ne 0 ] && cout "ERROR" "Unable to curl 'https://${REL}'" && cout "ERROR" "Execution interrupted, try again later." && exit 1;
   if [ "${ERT}" = "" ]; then
-    cout "INFO" "Checking if '${VER}' (${ARC}) is a valid channel... " "-n"
+    cout "INFO" "Checking if '${VER}' (${ARC}) has valid channels... " "-n"
     if [ "${ARC}" = "amd64" ]; then
       ${BIN}/grep "\"${VER}.*-x86_64\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
     else
@@ -124,32 +128,41 @@ check_release()
       ${BIN}/grep "\"${VER}-x86_64\"" ${PTH}/${RELf} &>/dev/null;
       ##for amd64 make an extra attempt without -x86_64 because old releases don't have any suffix
       if [ $? -ne 0 ]; then
-        ${BIN}/grep "\"${VER}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && cout "INFO" "TIP: try again only with target release (e.g. ${TRG}) to check available versions." && exit 1
+        ${BIN}/grep "\"${VER}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && cout "INFO" "TIP: try only with target release (e.g. ${TRG}) to check available versions." && exit 1
       fi
     else
-      ${BIN}/grep "\"${VER}-${ARC}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && cout "INFO" "TIP: try again only with target release (e.g. ${TRG}) to check available versions." && exit 1
+      ${BIN}/grep "\"${VER}-${ARC}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && cout "INFO" "TIP: try only with target release (e.g. ${TRG}) to check available versions." && exit 1
     fi
   fi
   cout "OK" ""
 }
 
 #OBTAIN UPGRADE PATHS JSONs
-get_paths()
+function get_paths()
 {
-  for chan in ${CHA[@]}; do
+  for chan in "${CHA[@]}"; do
     ${BIN}/curl -sH 'Accept:application/json' "${GPH}?channel=${chan}-${TRG}&arch=${ARC}" > ${PTH}/${chan}-${TRG}.json
     [[ $? -ne 0 ]] && cout "ERROR" "Unable to curl 'https://${GPH}?channel=${chan}-${TRG}&arch=${ARC}'" && cout "ERROR" "Execution interrupted, try again later." && exit 1
+    ##discard void channels
+    ${BIN}/echo -n '{"nodes":[],"edges":[]}' | diff ${PTH}/${chan}-${TRG}.json - &>/dev/null; [ $? -eq 0 ] && cout "WARN" "Skipping channel '${chan}-${TRG}-${ARC}', it's void." && continue
+    RES=("${RES[@]}" "${chan}")
   done
+  ##reset channel list accordingly or abort if none available
+  CHA=("${RES[@]}")
+  [[ ${#CHA[@]} -eq 0 ]] && cout "ERROR" "There are no channels to process. Aborting execution." && exit 1
 }
 
 #CAPTURE TARGETS ##TODO: do this against the API instead?
-capture_lts()
+function capture_lts()
 {
-  LTS=("$(${BIN}/cat ${PTH}/fast-${TRG}.json | ${BIN}/jq . | ${BIN}/grep "\"${TRG}." | ${BIN}/cut -d'"' -f4 | ${BIN}/sort -urV)")
+  for chan in "${CHA[@]}"; do
+    var="LTS_${chan}"
+    eval "${var}"="("$(${BIN}/cat ${PTH}/stable-${TRG}.json | ${BIN}/jq . | ${BIN}/grep "\"${TRG}." | ${BIN}/cut -d'"' -f4 | ${BIN}/sort -urV | ${BIN}/xargs)")"
+  done
 }
 
 #JSON to GV
-json2gv()
+function json2gv()
 {
   ##prepare the raw jq filter
   JQ_SCRIPT=$(${BIN}/echo '"digraph TITLE {\n  labelloc=b;\n  rankdir=BT;\n  label=CHANNEL" as $header |
@@ -182,77 +195,80 @@ json2gv()
     [$header, $nodes, $edges, "}"] | join("\n")')
 
   ##generate the gv files
-  for chan in ${CHA[@]}; do
+  for chan in "${CHA[@]}"; do
     ${BIN}/jq -r "${JQ_SCRIPT}" ${PTH}/${chan}-${TRG}.json > ${PTH}/${chan}-${TRG}.gv
     [[ $? -ne 0 ]] && cout "ERROR" "Unable to create ${PTH}/${chan}-${TRG}.gv file. Aborting execution." && exit 1
   done
 }
 
 #DISCARD CHANNELS & COLORIZE EDGES ##TODO: move this logic into JQ_SCRIPT?
-colorize()
+function colorize()
 {
   RES=() #re-initialize the array in case of channel discarding (4.x.z mode)
-  for chan in ${CHA[@]}; do
+  for chan in "${CHA[@]}"; do
+    var="LTS_${chan}"
+    arr=${var}[@]
     posV=$(grep "\"${VER}\"" ${PTH}/${chan}-${TRG}.gv | awk {'print $1'})
-    if [ "${posV}" = "" ]; then
-      cout "WARN" "Skipping channel '${chan}-${TRG}-${ARC}', version '${VER}' not found."
-    else
-      ##capture list of outgoing edges (possible indirect nodes)
-      IND=($(grep "\s\s${posV}->" ${PTH}/${chan}-${TRG}.gv | ${BIN}/cut -d">" -f2 | ${BIN}/cut -d";" -f1))
+    [[ "${posV}" = "" ]] && cout "WARN" "Skipping channel '${chan}-${TRG}-${ARC}', version '${VER}' not found." && continue
+    [[ -z ${!arr-} ]] && cout "WARN" "Skipping channel '${chan}-${TRG}-${ARC}', no upgrade paths available." && continue
 
-      ##colorize EXT->LTS edges
-      for target in ${LTS[@]}; do
-        posT=$(grep "\"${target}\"" ${PTH}/${chan}-${TRG}.gv | awk {'print $1'})
-        if [ "${posT}" != "" ]; then
-          for node in ${IND[@]}; do
-            ##Direct edges
-            if [ "${node}" = "${posT}" ]; then
-              ${BIN}/sed -i -e 's/^\(\s\s'"${posV}"'->'"${posT}"'\)\;$/\1 [color='"${EDGt}"'\,style=bold,label="dir"];/' ${PTH}/${chan}-${TRG}.gv
-              ${BIN}/sed -i -e 's/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
-              continue
-            fi
-            ##Indirect edges
-            ###grep is needed here because sed doesn't return a different exit code when matching
-            ${BIN}/grep "\s\s${node}->${posT};" ${PTH}/${chan}-${TRG}.gv &>/dev/null
-            if [ $? -eq 0 ]; then
-              ##if match, colorize indirect node, indirect edge & target node at the same time (triple combo)
-              ${BIN}/sed -i -e 's/^\(\s\s'"${node}"'\s.*\),color=.*$/\1,color='"${NODi}"' ]\;/;s/^\(\s\s'"${node}"'->'"${posT}"'\)\;$/\1 [color='"${EDGs}"',style=dashed,label="ind"];/;s/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
-              ##save final list of indirect nodes to be used below for pending source edges
-              EXT=("${EXT[@]}" "${node}")
-            fi
-          done
-        fi
-      done
-      ##colorize rest of source edges not yet processed
-      for node in ${EXT[@]}; do ${BIN}/sed -i -e 's/^\(\s\s'"${posV}"'->'"${node}"'\)\;$/\1 [color='"${EDGs}"',style=filled];/' ${PTH}/${chan}-${TRG}.gv; done
-      ##save resulting channels for subsequent operations
-      RES=("${RES[@]}" "${chan}")
-    fi
-    ##removing non involved nodes+edges to simplify the graph
+    ##capture list of outgoing edges (possible indirect nodes)
+    IND=($(grep "\s\s${posV}->" ${PTH}/${chan}-${TRG}.gv | ${BIN}/cut -d">" -f2 | ${BIN}/cut -d";" -f1))
+
+    ##colorize EXT->LTS edges
+    for target in "${!arr}"; do
+      posT=$(grep "\"${target}\"" ${PTH}/${chan}-${TRG}.gv | awk {'print $1'})
+      if [ "${posT}" != "" ]; then
+        for node in "${IND[@]}"; do
+          ##Direct edges
+          if [ "${node}" = "${posT}" ]; then
+            ${BIN}/sed -i -e 's/^\(\s\s'"${posV}"'->'"${posT}"'\)\;$/\1 [color='"${EDGt}"'\,style=bold,label="dir"];/' ${PTH}/${chan}-${TRG}.gv
+            ${BIN}/sed -i -e 's/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
+            continue
+          fi
+          ##Indirect edges
+          ###grep is needed here because sed doesn't return a different exit code when matching
+          ${BIN}/grep "\s\s${node}->${posT};" ${PTH}/${chan}-${TRG}.gv &>/dev/null
+          if [ $? -eq 0 ]; then
+            ##if match, colorize indirect node, indirect edge & target node at the same time (triple combo)
+            ${BIN}/sed -i -e 's/^\(\s\s'"${node}"'\s.*\),color=.*$/\1,color='"${NODi}"' ]\;/;s/^\(\s\s'"${node}"'->'"${posT}"'\)\;$/\1 [color='"${EDGs}"',style=dashed,label="ind"];/;s/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
+            ##save final list of indirect nodes to be used below for pending source edges
+            EXT=("${EXT[@]}" "${node}")
+          fi
+        done
+      fi
+    done
+
+    ##colorize rest of source edges not yet processed
+    for node in "${EXT[@]}"; do ${BIN}/sed -i -e 's/^\(\s\s'"${posV}"'->'"${node}"'\)\;$/\1 [color='"${EDGs}"',style=filled];/' ${PTH}/${chan}-${TRG}.gv; done
+    ##remove non involved nodes+edges to simplify the graph
     ${BIN}/sed -i -e '/color='"${DEF}"'/d;/[0-9]\;$/d' ${PTH}/${chan}-${TRG}.gv
+
+    ##save resulting channels for subsequent operations
+    RES=("${RES[@]}" "${chan}")
   done
 
   ##abort if the provided release is not present within any of the channels
-  [[ ${#RES[@]} -eq 0 ]] && cout "ERROR" "Version '${VER}' not found within any of the '${TRG}' channels. Aborting execution." && cout "INFO" "TIP: try again only with target release (e.g. ${TRG}) to check available versions." && exit 1
+  [[ ${#RES[@]} -eq 0 ]] && cout "ERROR" "Version '${VER}' not found (or not upgradable) within '${TRG}' channels. Aborting execution." && cout "INFO" "TIP: try only with target release (e.g. ${TRG}) to check available versions." && exit 1
 }
 
 #LABELING
-label()
+function label()
 {
-  for chan in ${RES[@]}; do ${BIN}/sed -i -e 's/TITLE/'"${chan}"'/' ${PTH}/${chan}-${TRG}.gv; done
-  for chan in ${RES[@]}; do ${BIN}/sed -i -e 's/CHANNEL/"'"${chan}"'-'"${TRG}"' \('"$(${BIN}/date --rfc-3339=date)"'\) ['"${ARC}"']"/' ${PTH}/${chan}-${TRG}.gv; done
+  for chan in "${RES[@]}"; do ${BIN}/sed -i -e 's/TITLE/'"${chan}"'/' ${PTH}/${chan}-${TRG}.gv; done
+  for chan in "${RES[@]}"; do ${BIN}/sed -i -e 's/CHANNEL/"'"${chan}"'-'"${TRG}"' \('"$(${BIN}/date --rfc-3339=date)"'\) ['"${ARC}"']"/' ${PTH}/${chan}-${TRG}.gv; done
 }
 
 #DRAW & EXPORT
-draw()
+function draw()
 {
   if [ "${ERT}" != "" ]; then
-    for chan in ${RES[@]}; do
+    for chan in "${RES[@]}"; do
       ${BIN}/dot -Tsvg ${PTH}/${chan}-${TRG}.gv -o ${chan}-${TRG}_${ARC}_$(date +%Y%m%d).svg
       [[ $? -ne 0 ]] && cout "ERROR" "Unable to export the results. Aborting execution." && exit 1 || cout "INFO" "Result exported as '${chan}-${TRG}_${ARC}_$(date +%Y%m%d).svg'"
     done
   else
-    for chan in ${RES[@]}; do
+    for chan in "${RES[@]}"; do
       ${BIN}/dot -Tsvg ${PTH}/${chan}-${TRG}.gv -o ${chan}-${TRG}_${ARC}_def_$(date +%Y%m%d).svg 
       [[ $? -ne 0 ]] && cout "ERROR" "Unable to export the results. Aborting execution." && exit 1 || cout "INFO" "Result exported as '${chan}-${TRG}_${ARC}_def_$(date +%Y%m%d).svg'"
     done
@@ -260,7 +276,7 @@ draw()
 }
 
 #SCRIPT WORKFLOW ($args[])
-main()
+function main()
 {
   args=("$@")
   declare_vars "$0" "${args[@]}"
