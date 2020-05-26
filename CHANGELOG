@@ -1,3 +1,9 @@
+*v2.2
+ - Fixed LTS bug (stable hardcoded by mistake)
+ - Adding discarding of channels when duplicated content (stable=fast)
+ - Fixed sanity check for MIN version
+ - Usage function fully dynamic like the rest
+
 *v2.1
  - BASH best practices applied
  - Removing 'bc' prerequisite, no longer needed 

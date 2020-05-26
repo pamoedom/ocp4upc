@@ -2,8 +2,11 @@
 set -o pipefail
 set -o nounset
 
-VERSION="2.1"
+#GLOBAL STUFF
+VERSION="2.2"
 BIN="/usr/bin"
+CHA=(stable fast) #array of channels
+
 
 #INFO = (
 #          author      => 'Pedro Amoedo'
@@ -22,7 +25,7 @@ BIN="/usr/bin"
 function usage()
 {
   ${BIN}/echo "-------------------------------------------------------------------"
-  ${BIN}/echo "OCP4 Upgrade Paths Checker (stable & fast channels) v${VERSION}"
+  ${BIN}/echo "OCP4 Upgrade Paths Checker ($(${BIN}/echo "${CHA[@]}")) v${VERSION}"
   ${BIN}/echo ""
   ${BIN}/echo "Usage:"
   ${BIN}/echo "$0 source_version [arch]"
@@ -60,6 +63,7 @@ function declare_vars()
   ##Target channel calculation
   MAJ=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f1)
   MIN=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f2)
+  [[ "${MIN}" = "" ]] && usage
   ERT=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f3) #errata version provided?
   [[ "${ERT}" = "" ]] && TRG=${VER} || TRG="${MAJ}.$(( ${MIN} + 1 ))"
 
@@ -72,7 +76,6 @@ function declare_vars()
   DEF="grey" #default
 
   ##Various Arrays
-  CHA=(stable fast) #array of production-ready channels
   REQ=(curl jq dot) #array of pre-requisities
   RES=() #array of resulting channels in case of discard
   for chan in "${CHA[@]}"; do declare -a "LTS_${chan}=()"; done #arrays of possible target releases per channel.
@@ -140,12 +143,16 @@ function check_release()
 #OBTAIN UPGRADE PATHS JSONs
 function get_paths()
 {
+  i=0
   for chan in "${CHA[@]}"; do
     ${BIN}/curl -sH 'Accept:application/json' "${GPH}?channel=${chan}-${TRG}&arch=${ARC}" > ${PTH}/${chan}-${TRG}.json
     [[ $? -ne 0 ]] && cout "ERROR" "Unable to curl 'https://${GPH}?channel=${chan}-${TRG}&arch=${ARC}'" && cout "ERROR" "Execution interrupted, try again later." && exit 1
     ##discard void channels
-    ${BIN}/echo -n '{"nodes":[],"edges":[]}' | diff ${PTH}/${chan}-${TRG}.json - &>/dev/null; [ $? -eq 0 ] && cout "WARN" "Skipping channel '${chan}-${TRG}-${ARC}', it's void." && continue
+    ${BIN}/echo -n '{"nodes":[],"edges":[]}' | ${BIN}/diff ${PTH}/${chan}-${TRG}.json - &>/dev/null; [ $? -eq 0 ] && cout "WARN" "Skipping channel '${chan}-${TRG}-${ARC}', it's void." && continue
+    ##discard duplicated channels
+    [[ $i -ne 0 ]] && ${BIN}/diff ${PTH}/${chan}-${TRG}.json ${PTH}/${CHA[$(( $i - 1 ))]}-${TRG}.json &>/dev/null; [ $? -eq 0 ] && cout "WARN" "Discarding channel '${chan}-${TRG}-${ARC}', it doesn't differ from '${CHA[$(( $i - 1 ))]}-${TRG}-${ARC}'." && continue
     RES=("${RES[@]}" "${chan}")
+    (( i++ ))
   done
   ##reset channel list accordingly or abort if none available
   CHA=("${RES[@]}")
@@ -157,7 +164,7 @@ function capture_lts()
 {
   for chan in "${CHA[@]}"; do
     var="LTS_${chan}"
-    eval "${var}"="("$(${BIN}/cat ${PTH}/stable-${TRG}.json | ${BIN}/jq . | ${BIN}/grep "\"${TRG}." | ${BIN}/cut -d'"' -f4 | ${BIN}/sort -urV | ${BIN}/xargs)")"
+    eval "${var}"="("$(${BIN}/cat ${PTH}/${chan}-${TRG}.json | ${BIN}/jq . | ${BIN}/grep "\"${TRG}." | ${BIN}/cut -d'"' -f4 | ${BIN}/sort -urV | ${BIN}/xargs)")"
   done
 }
 
