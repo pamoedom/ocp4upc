@@ -1,3 +1,9 @@
+*v2.3
+ - Removing extra 'https' in curl error messages.
+ - Adding user option to bypass check_release when quay is down.
+ - Changing edges from dir/ind to D/I.
+ - Adding a title note to explain D/I edges meaning.
+
 *v2.2
  - Fixed LTS bug (stable hardcoded by mistake)
  - Adding discarding of channels when duplicated content (stable=fast)

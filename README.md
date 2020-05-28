@@ -6,7 +6,7 @@ This is just a bash script that generates a graphical output of the possible **m
 ~~~
 $ ./ocp4upc.sh
 ------------------------------------------------------------------
-OCP4 Upgrade Paths Checker (stable fast) v2.2
+OCP4 Upgrade Paths Checker (stable fast) v2.3
 
 Usage:
 ./ocp4upc.sh source_version [arch]
@@ -23,14 +23,14 @@ ppc64le    POWER8 little endian
 ~~~
 ## Example
 ~~~
-$ ./ocp4upc.sh 4.3.13
+$ ./ocp4upc.sh 4.3.19
 [INFO] Checking prerequisites (curl jq dot)... [OK] 
 [INFO] Errata provided (4.x.z mode), targeting '4.4' channels for upgrade path generation.
-[INFO] Checking if '4.3.13' (amd64) is a valid release... [OK] 
-[INFO] Result exported as 'stable-4.4_amd64_20200527.svg'
-[INFO] Result exported as 'fast-4.4_amd64_20200527.svg'
+[INFO] Checking if '4.3.19' (amd64) is a valid release... [OK] 
+[INFO] Result exported as 'stable-4.4_amd64_20200528.svg'
+[INFO] Result exported as 'fast-4.4_amd64_20200528.svg'
 ~~~
-![fast-4.3](https://github.com/pamoedom/ocp4upc/blob/master/examples/fast-4.4_amd64_20200527.png)
+![fast-4.3](https://github.com/pamoedom/ocp4upc/blob/master/examples/fast-4.4_amd64_20200528.png)
 ## Dependencies
 - `curl` <https://curl.haxx.se/>
 - `jq` <http://stedolan.github.io/jq/>

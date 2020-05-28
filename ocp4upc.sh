@@ -3,7 +3,7 @@ set -o pipefail
 set -o nounset
 
 #GLOBAL STUFF
-VERSION="2.2"
+VERSION="2.3"
 BIN="/usr/bin"
 CHA=(stable fast) #array of channels
 
@@ -117,7 +117,14 @@ function check_prereq()
 #RELEASE CHECKING
 function check_release()
 {
-  ${BIN}/curl -sH 'Accept:application/json' "${REL}" | ${BIN}/jq . > ${PTH}/${RELf}; [ $? -ne 0 ] && cout "ERROR" "Unable to curl '${REL}'" && cout "ERROR" "Execution interrupted, try again later." && exit 1;
+  ${BIN}/curl -sH 'Accept:application/json' "${REL}" | ${BIN}/jq . > ${PTH}/${RELf}
+  if [ $? -ne 0 ]; then
+    cout "WARN" "Unable to curl '${REL}'"
+    cout "WARN" "Do you want to continue omitting sanity checks? (y/N):" "-n"
+    read yn
+    [[ ${yn} =~ ^([yY][eE][sS]|[yY])$ ]] && return || cout "ERROR" "Execution interrupted, try again later." && exit 1;
+  fi
+  
   if [ "${ERT}" = "" ]; then
     cout "INFO" "Checking if '${VER}' (${ARC}) has valid channels... " "-n"
     if [ "${ARC}" = "amd64" ]; then
@@ -148,9 +155,9 @@ function get_paths()
     ${BIN}/curl -sH 'Accept:application/json' "${GPH}?channel=${chan}-${TRG}&arch=${ARC}" > ${PTH}/${chan}-${TRG}.json
     [[ $? -ne 0 ]] && cout "ERROR" "Unable to curl '${GPH}?channel=${chan}-${TRG}&arch=${ARC}'" && cout "ERROR" "Execution interrupted, try again later." && exit 1
     ##discard void channels
-    ${BIN}/echo -n '{"nodes":[],"edges":[]}' | ${BIN}/diff ${PTH}/${chan}-${TRG}.json - &>/dev/null; [ $? -eq 0 ] && cout "WARN" "Skipping channel '${chan}-${TRG}-${ARC}', it's void." && continue
+    ${BIN}/echo -n '{"nodes":[],"edges":[]}' | ${BIN}/diff ${PTH}/${chan}-${TRG}.json - &>/dev/null; [ $? -eq 0 ] && cout "WARN" "Skipping channel '${chan}-${TRG}_${ARC}', it's void." && continue
     ##discard duplicated channels
-    [[ $i -ne 0 ]] && ${BIN}/diff ${PTH}/${chan}-${TRG}.json ${PTH}/${CHA[$(( $i - 1 ))]}-${TRG}.json &>/dev/null; [ $? -eq 0 ] && cout "WARN" "Discarding channel '${chan}-${TRG}-${ARC}', it doesn't differ from '${CHA[$(( $i - 1 ))]}-${TRG}-${ARC}'." && continue
+    [[ $i -ne 0 ]] && ${BIN}/diff ${PTH}/${chan}-${TRG}.json ${PTH}/${CHA[$(( $i - 1 ))]}-${TRG}.json &>/dev/null; [ $? -eq 0 ] && cout "WARN" "Discarding channel '${chan}-${TRG}_${ARC}', it doesn't differ from '${CHA[$(( $i - 1 ))]}-${TRG}_${ARC}'." && continue
     RES=("${RES[@]}" "${chan}")
     (( i++ ))
   done
@@ -216,8 +223,8 @@ function colorize()
     var="LTS_${chan}"
     arr=${var}[@]
     posV=$(grep "\"${VER}\"" ${PTH}/${chan}-${TRG}.gv | awk {'print $1'})
-    [[ "${posV}" = "" ]] && cout "WARN" "Skipping channel '${chan}-${TRG}-${ARC}', version '${VER}' not found." && continue
-    [[ -z ${!arr-} ]] && cout "WARN" "Skipping channel '${chan}-${TRG}-${ARC}', no upgrade paths available." && continue
+    [[ "${posV}" = "" ]] && cout "WARN" "Skipping channel '${chan}-${TRG}_${ARC}', version '${VER}' not found." && continue
+    [[ -z ${!arr-} ]] && cout "WARN" "Skipping channel '${chan}-${TRG}_${ARC}', no upgrade paths available." && continue
 
     ##capture list of outgoing edges (possible indirect nodes)
     IND=($(grep "\s\s${posV}->" ${PTH}/${chan}-${TRG}.gv | ${BIN}/cut -d">" -f2 | ${BIN}/cut -d";" -f1))
@@ -229,7 +236,7 @@ function colorize()
         for node in "${IND[@]}"; do
           ##Direct edges
           if [ "${node}" = "${posT}" ]; then
-            ${BIN}/sed -i -e 's/^\(\s\s'"${posV}"'->'"${posT}"'\)\;$/\1 [color='"${EDGt}"'\,style=bold,label="dir"];/' ${PTH}/${chan}-${TRG}.gv
+            ${BIN}/sed -i -e 's/^\(\s\s'"${posV}"'->'"${posT}"'\)\;$/\1 [color='"${EDGt}"'\,style=bold,label="D"];/' ${PTH}/${chan}-${TRG}.gv
             ${BIN}/sed -i -e 's/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
             continue
           fi
@@ -238,7 +245,7 @@ function colorize()
           ${BIN}/grep "\s\s${node}->${posT};" ${PTH}/${chan}-${TRG}.gv &>/dev/null
           if [ $? -eq 0 ]; then
             ##if match, colorize indirect node, indirect edge & target node at the same time (triple combo)
-            ${BIN}/sed -i -e 's/^\(\s\s'"${node}"'\s.*\),color=.*$/\1,color='"${NODi}"' ]\;/;s/^\(\s\s'"${node}"'->'"${posT}"'\)\;$/\1 [color='"${EDGs}"',style=dashed,label="ind"];/;s/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
+            ${BIN}/sed -i -e 's/^\(\s\s'"${node}"'\s.*\),color=.*$/\1,color='"${NODi}"' ]\;/;s/^\(\s\s'"${node}"'->'"${posT}"'\)\;$/\1 [color='"${EDGs}"',style=dashed,label="I"];/;s/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
             ##save final list of indirect nodes to be used below for pending source edges
             EXT=("${EXT[@]}" "${node}")
           fi
@@ -263,7 +270,7 @@ function colorize()
 function label()
 {
   for chan in "${RES[@]}"; do ${BIN}/sed -i -e 's/TITLE/'"${chan}"'/' ${PTH}/${chan}-${TRG}.gv; done
-  for chan in "${RES[@]}"; do ${BIN}/sed -i -e 's/CHANNEL/"'"${chan}"'-'"${TRG}"' \('"$(${BIN}/date --rfc-3339=date)"'\) ['"${ARC}"']"/' ${PTH}/${chan}-${TRG}.gv; done
+  for chan in "${RES[@]}"; do ${BIN}/sed -i -e 's/CHANNEL/"'"${chan}"'-'"${TRG}"'_'"${ARC}"' \('"$(${BIN}/date --rfc-3339=date)"'\) [D=Direct \/ I=Indirect]"/' ${PTH}/${chan}-${TRG}.gv; done
 }
 
 #DRAW & EXPORT
