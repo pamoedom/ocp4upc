@@ -117,7 +117,7 @@ function check_prereq()
 #RELEASE CHECKING
 function check_release()
 {
-  ${BIN}/curl -sH 'Accept:application/json' "${REL}" | ${BIN}/jq . > ${PTH}/${RELf}; [ $? -ne 0 ] && cout "ERROR" "Unable to curl 'https://${REL}'" && cout "ERROR" "Execution interrupted, try again later." && exit 1;
+  ${BIN}/curl -sH 'Accept:application/json' "${REL}" | ${BIN}/jq . > ${PTH}/${RELf}; [ $? -ne 0 ] && cout "ERROR" "Unable to curl '${REL}'" && cout "ERROR" "Execution interrupted, try again later." && exit 1;
   if [ "${ERT}" = "" ]; then
     cout "INFO" "Checking if '${VER}' (${ARC}) has valid channels... " "-n"
     if [ "${ARC}" = "amd64" ]; then
@@ -146,7 +146,7 @@ function get_paths()
   i=0
   for chan in "${CHA[@]}"; do
     ${BIN}/curl -sH 'Accept:application/json' "${GPH}?channel=${chan}-${TRG}&arch=${ARC}" > ${PTH}/${chan}-${TRG}.json
-    [[ $? -ne 0 ]] && cout "ERROR" "Unable to curl 'https://${GPH}?channel=${chan}-${TRG}&arch=${ARC}'" && cout "ERROR" "Execution interrupted, try again later." && exit 1
+    [[ $? -ne 0 ]] && cout "ERROR" "Unable to curl '${GPH}?channel=${chan}-${TRG}&arch=${ARC}'" && cout "ERROR" "Execution interrupted, try again later." && exit 1
     ##discard void channels
     ${BIN}/echo -n '{"nodes":[],"edges":[]}' | ${BIN}/diff ${PTH}/${chan}-${TRG}.json - &>/dev/null; [ $? -eq 0 ] && cout "WARN" "Skipping channel '${chan}-${TRG}-${ARC}', it's void." && continue
     ##discard duplicated channels
