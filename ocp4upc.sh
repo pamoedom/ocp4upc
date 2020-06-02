@@ -3,7 +3,7 @@ set -o pipefail
 set -o nounset
 
 #GLOBAL STUFF
-VERSION="2.3"
+VERSION="2.4"
 BIN="/usr/bin"
 CHA=(stable fast) #array of channels
 
@@ -12,9 +12,9 @@ CHA=(stable fast) #array of channels
 #          author      => 'Pedro Amoedo'
 #          contact     => 'pamoedom@redhat.com'
 #          name        => 'ocp4upc.sh',
-#          usage       => '(see below)',
+#          usage       => '(see function usage below)',
 #          description => 'OCP4 Upgrade Paths Checker',
-#          changelog   => '(see CHANGELOG file)'
+#          changelog   => '(see CHANGELOG file or git log)'
 #       );
 
 #ARGs DESCRIPTION
@@ -53,17 +53,13 @@ function declare_vars()
   REL='https://quay.io/api/v1/repository/openshift-release-dev/ocp-release'
 
   ##ARGs
-  VER=${args[1]}
+  [[ ${#args[1]} -lt 3 ]] && usage || VER=${args[1]}
   [[ -z ${args[2]-} ]] && ARC="amd64" || ARC=${args[2]}
 
-  ##Misc
-  PTH="/tmp/${cmd##*/}" #generate the tmp folder based on the current script name
-  RELf="ocp4-releases.json"
-
   ##Target channel calculation
+  ! [[ ${VER} =~ ^[0-9]([.][0-9]+).*$ ]] && usage
   MAJ=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f1)
   MIN=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f2)
-  [[ "${MIN}" = "" ]] && usage
   ERT=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f3) #errata version provided?
   [[ "${ERT}" = "" ]] && TRG=${VER} || TRG="${MAJ}.$(( ${MIN} + 1 ))"
 
@@ -73,7 +69,7 @@ function declare_vars()
   NODs="salmon" #source node
   NODt="yellowgreen" #target nodes (LTS)
   NODi="lightgrey" #indirect nodes
-  DEF="grey" #default
+  DEF="grey" #default color (keep it different)
 
   ##Various Arrays
   REQ=(curl jq dot) #array of pre-requisities
@@ -88,6 +84,11 @@ function declare_vars()
   WARN="${BIN}/echo -en \\033[1;33m" #yellow
   INFO="${BIN}/echo -en \\033[1;34m" #blue
   NORM="${BIN}/echo -en \\033[0;39m" #default
+
+  ##Misc
+  PTH="/tmp/${cmd##*/}" #generate the tmp folder based on the current script name
+  RELf="ocp4-releases.json"
+  KEY='  Key \[rank=sink,shape=none,margin=0\.3,label=< <TABLE BORDER="1" STYLE="DOTTED" CELLBORDER="0" CELLSPACING="1" CELLPADDING="0"><TR><TD COLSPAN="2"><B>Key<\/B><\/TD><\/TR><TR><TD align="left">Direct Path<\/TD><TD><FONT COLOR="'"${EDGt}"'">\&\#10230\;<\/FONT><\/TD><\/TR><TR><TD align="left">Indirect Path<\/TD><TD><FONT COLOR="'"${EDGs}"'">\&\#8594\; \&\#10511\;<\/FONT><\/TD><\/TR><\/TABLE> >\]; }'
 }
 
 #PRETTY PRINT ($type_of_msg,$string,$echo_opts)
@@ -179,7 +180,7 @@ function capture_lts()
 function json2gv()
 {
   ##prepare the raw jq filter
-  JQ_SCRIPT=$(${BIN}/echo '"digraph TITLE {\n  labelloc=b;\n  rankdir=BT;\n  label=CHANNEL" as $header |
+  JQ_SCRIPT=$(${BIN}/echo '"digraph TITLE {\n  labelloc=c;\n  rankdir=BT;\n  label=CHANNEL" as $header |
     (
       [
         .nodes |
@@ -236,7 +237,7 @@ function colorize()
         for node in "${IND[@]}"; do
           ##Direct edges
           if [ "${node}" = "${posT}" ]; then
-            ${BIN}/sed -i -e 's/^\(\s\s'"${posV}"'->'"${posT}"'\)\;$/\1 [color='"${EDGt}"'\,style=bold,label="D"];/' ${PTH}/${chan}-${TRG}.gv
+            ${BIN}/sed -i -e 's/^\(\s\s'"${posV}"'->'"${posT}"'\)\;$/\1 [color='"${EDGt}"'\,style=bold];/' ${PTH}/${chan}-${TRG}.gv
             ${BIN}/sed -i -e 's/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
             continue
           fi
@@ -245,18 +246,21 @@ function colorize()
           ${BIN}/grep "\s\s${node}->${posT};" ${PTH}/${chan}-${TRG}.gv &>/dev/null
           if [ $? -eq 0 ]; then
             ##if match, colorize indirect node, indirect edge & target node at the same time (triple combo)
-            ${BIN}/sed -i -e 's/^\(\s\s'"${node}"'\s.*\),color=.*$/\1,color='"${NODi}"' ]\;/;s/^\(\s\s'"${node}"'->'"${posT}"'\)\;$/\1 [color='"${EDGs}"',style=dashed,label="I"];/;s/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
+            ${BIN}/sed -i -e 's/^\(\s\s'"${node}"'\s.*\),color=.*$/\1,color='"${NODi}"' ]\;/;s/^\(\s\s'"${node}"'->'"${posT}"'\)\;$/\1 [color='"${EDGs}"',style=dashed];/;s/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
             ##save final list of indirect nodes to be used below for pending source edges
             EXT=("${EXT[@]}" "${node}")
           fi
         done
       fi
     done
-
     ##colorize rest of source edges not yet processed
     for node in "${EXT[@]}"; do ${BIN}/sed -i -e 's/^\(\s\s'"${posV}"'->'"${node}"'\)\;$/\1 [color='"${EDGs}"',style=filled];/' ${PTH}/${chan}-${TRG}.gv; done
+
     ##remove non involved nodes+edges to simplify the graph
     ${BIN}/sed -i -e '/color='"${DEF}"'/d;/[0-9]\;$/d' ${PTH}/${chan}-${TRG}.gv
+
+    ##include the graph legend
+    ${BIN}/sed -i -e 's/^}$/'"${KEY}"'/' ${PTH}/${chan}-${TRG}.gv
 
     ##save resulting channels for subsequent operations
     RES=("${RES[@]}" "${chan}")
@@ -270,7 +274,7 @@ function colorize()
 function label()
 {
   for chan in "${RES[@]}"; do ${BIN}/sed -i -e 's/TITLE/'"${chan}"'/' ${PTH}/${chan}-${TRG}.gv; done
-  for chan in "${RES[@]}"; do ${BIN}/sed -i -e 's/CHANNEL/"'"${chan}"'-'"${TRG}"'_'"${ARC}"' \('"$(${BIN}/date --rfc-3339=date)"'\) [D=Direct \/ I=Indirect]"/' ${PTH}/${chan}-${TRG}.gv; done
+  for chan in "${RES[@]}"; do ${BIN}/sed -i -e 's/CHANNEL/"'"${chan}"'-'"${TRG}"'_'"${ARC}"' \('"$(${BIN}/date --rfc-3339=date)"'\)"/' ${PTH}/${chan}-${TRG}.gv; done
 }
 
 #DRAW & EXPORT

@@ -1,12 +1,12 @@
 # ocp4upc
 OCP4 Upgrade Paths Checker
 ## Description
-This is just a bash script that generates a graphical output of the possible **minor upgrade paths** using production-ready **stable** and **fast** [OpenShift 4 channels](https://docs.openshift.com/container-platform/4.4/updating/updating-cluster-between-minor.html#understanding-upgrade-channels_updating-cluster-between-minor).
+This is a BASH script that generates a graphical output of the possible OpenShift 4 **minor upgrade paths** using **stable** and **fast** production-ready [channels](https://docs.openshift.com/container-platform/4.4/updating/updating-cluster-between-minor.html#understanding-upgrade-channels_updating-cluster-between-minor).
 ## Usage
 ~~~
 $ ./ocp4upc.sh
 ------------------------------------------------------------------
-OCP4 Upgrade Paths Checker (stable fast) v2.3
+OCP4 Upgrade Paths Checker (stable fast) v2.4
 
 Usage:
 ./ocp4upc.sh source_version [arch]
@@ -23,14 +23,14 @@ ppc64le    POWER8 little endian
 ~~~
 ## Example
 ~~~
-$ ./ocp4upc.sh 4.3.19
+$ ./ocp4upc.sh 4.3.13
 [INFO] Checking prerequisites (curl jq dot)... [OK] 
 [INFO] Errata provided (4.x.z mode), targeting '4.4' channels for upgrade path generation.
-[INFO] Checking if '4.3.19' (amd64) is a valid release... [OK] 
-[INFO] Result exported as 'stable-4.4_amd64_20200528.svg'
-[INFO] Result exported as 'fast-4.4_amd64_20200528.svg'
+[INFO] Checking if '4.3.13' (amd64) is a valid release... [OK] 
+[INFO] Result exported as 'stable-4.4_amd64_20200603.svg'
+[INFO] Result exported as 'fast-4.4_amd64_20200603.svg'
 ~~~
-![fast-4.3](https://github.com/pamoedom/ocp4upc/blob/master/examples/fast-4.4_amd64_20200528.png)
+![fast-4.4](https://github.com/pamoedom/ocp4upc/blob/master/examples/fast-4.4_amd64_20200603.png)
 ## Dependencies
 - `curl` <https://curl.haxx.se/>
 - `jq` <http://stedolan.github.io/jq/>
