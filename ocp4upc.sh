@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -o pipefail
-set -o nounset
+#set -o nounset #Disabling this extra check to avoid BASH 4.x to abort with array bounds.
 
 #GLOBAL STUFF
 VERSION="2.4"
