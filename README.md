@@ -6,7 +6,7 @@ This is a BASH script that generates a graphical output of the possible OpenShif
 ~~~
 $ ./ocp4upc.sh
 ------------------------------------------------------------------
-OCP4 Upgrade Paths Checker (stable fast) v2.4
+OCP4 Upgrade Paths Checker (stable fast) v2.5
 
 Usage:
 ./ocp4upc.sh source_version [arch]
@@ -15,7 +15,7 @@ Source Version:
 4.x        Extract same-minor complete default channels  (e.g. 4.2)
 4.x.z      Generate next-minor channels upgrade paths (e.g. 4.2.26)
 
-Arch:
+Arch (optional):
 amd64      x86_64 (default)
 s390x      IBM System/390
 ppc64le    POWER8 little endian
@@ -23,14 +23,14 @@ ppc64le    POWER8 little endian
 ~~~
 ## Example
 ~~~
-$ ./ocp4upc.sh 4.3.13
+$ ./ocp4upc.sh 4.3.19
 [INFO] Checking prerequisites (curl jq dot)... [OK] 
 [INFO] Errata provided (4.x.z mode), targeting '4.4' channels for upgrade path generation.
-[INFO] Checking if '4.3.13' (amd64) is a valid release... [OK] 
-[INFO] Result exported as 'stable-4.4_amd64_20200603.svg'
-[INFO] Result exported as 'fast-4.4_amd64_20200603.svg'
+[INFO] Checking if '4.3.19' (amd64) is a valid release... [OK] 
+[INFO] Result exported as 'stable-4.4_amd64_20200708.svg'
+[INFO] Result exported as 'fast-4.4_amd64_20200708.svg'
 ~~~
-![fast-4.4](https://github.com/pamoedom/ocp4upc/blob/master/examples/fast-4.4_amd64_20200603.png)
+![fast-4.4](https://github.com/pamoedom/ocp4upc/blob/master/examples/fast-4.4_amd64_20200708.png)
 ## Dependencies
 - `curl` <https://curl.haxx.se/>
 - `jq` <http://stedolan.github.io/jq/>
