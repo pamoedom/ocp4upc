@@ -3,7 +3,7 @@ set -o pipefail
 #set -o nounset #This extra check has been disabled to avoid BASH 4.x crashing with some array boundaries.
 
 #GLOBAL STUFF
-VERSION="2.5"
+VERSION="2.6"
 BIN="/usr/bin"
 CHANDEF=(stable fast) #Default list of channels, modify only this one if needed.
 
@@ -31,8 +31,9 @@ function usage()
   ${BIN}/echo "$0 source_version [arch]"
   ${BIN}/echo ""
   ${BIN}/echo "Source Version:"
-  ${BIN}/echo "4.x        Extract same-minor complete default channels  (e.g. 4.2)"
-  ${BIN}/echo "4.x.z      Generate next-minor channels upgrade paths (e.g. 4.2.26)"
+  ${BIN}/echo "4.x        Extract default graphs using same-minor channels, e.g. '4.2'"
+  ${BIN}/echo "4.x.z      Generate upgrade paths using next-minor channels, e.g. '4.2.26'"
+  ${BIN}/echo "4.x.z.     Generate upgrade paths using same-minor channels, e.g. '4.2.26.'"
   ${BIN}/echo ""
   ${BIN}/echo "Arch (optional):"
   ${BIN}/echo "amd64      x86_64 (default)"
@@ -56,12 +57,20 @@ function declare_vars()
   [[ ${#args[1]} -lt 3 ]] && usage || VER=${args[1]}
   [[ -z ${args[2]-} ]] && ARC="amd64" || ARC=${args[2]}
 
-  ##Target channel calculation
+  ##Target channel calculation & mode detection
   ! [[ ${VER} =~ ^[0-9]([.][0-9]+).*$ ]] && usage
   MAJ=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f1)
   MIN=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f2)
-  ERT=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f3) #errata version provided?
-  [[ "${ERT}" = "" ]] && TRG=${VER} || TRG="${MAJ}.$(( ${MIN} + 1 ))"
+  ERT=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f3-) #errata version provided?
+  if [ "${ERT}" != "" ]; then
+    [[ ${ERT} =~ ^[0-9]+$ ]] && TRG="${MAJ}.$(( ${MIN} + 1 ))" && MOD="4.x.z"
+    [[ ${ERT} =~ ^[0-9]+[.]$ ]] && TRG="${MAJ}.${MIN}" && VER=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f1,2,3) && MOD="4.x.z."
+    [[ ${TRG} = "" ]] && usage
+  else
+    VER=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f1,2)
+    TRG="${VER}"
+    MOD="4.x"
+  fi
 
   ##Edge & Node colors
   EDGs="blue" #source edges -> *
@@ -140,10 +149,10 @@ function check_release()
       ${BIN}/grep "\"${VER}-x86_64\"" ${PTH}/${RELf} &>/dev/null;
       ##for amd64 make an extra attempt without -x86_64 because old releases don't have any suffix
       if [ $? -ne 0 ]; then
-        ${BIN}/grep "\"${VER}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && cout "INFO" "TIP: try only with target release (e.g. ${TRG}) to check available versions." && exit 1
+        ${BIN}/grep "\"${VER}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && cout "INFO" "TIP: run the script without parameters to see other available architectures." && exit 1
       fi
     else
-      ${BIN}/grep "\"${VER}-${ARC}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && cout "INFO" "TIP: try only with target release (e.g. ${TRG}) to check available versions." && exit 1
+      ${BIN}/grep "\"${VER}-${ARC}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && cout "INFO" "TIP: run the script without parameters to see other available architectures." && exit 1
     fi
   fi
   cout "OK" ""
@@ -167,8 +176,8 @@ function get_paths()
   CHA=("${RES[@]}")
   if [ ${#CHA[@]} -eq 0 ]; then
     ##allow the user to make a 2nd run on the same minor channels if targeting a non-released version (corner case)
-    if [ "${ERT}" != "" ]; then
-      cout "WARN" "It seems you are targeting void channels, do you want to generate same-minor upgrade path instead? (y/N):" "-n"
+    if [ "${ERT}" != "" ] && [ "${TRG}" != "${MAJ}.${MIN}" ]; then
+      cout "WARN" "You are targeting void '${TRG}' channels, do you want to re-target to '"${MAJ}.${MIN}"' instead (4.x.z. mode)? (y/N):" "-n"
       read -t 10 yn
       [[ ${yn} =~ ^([yY][eE][sS]|[yY])$ ]] && return 2 
     fi
@@ -276,7 +285,7 @@ function colorize()
   done
 
   ##abort if the provided release is not present within any of the channels
-  [[ ${#RES[@]} -eq 0 ]] && cout "ERROR" "Version '${VER}' not found (or not upgradable) within '${TRG}' channels. Aborting execution." && cout "INFO" "TIP: try only with target release (e.g. ${TRG}) to check available versions." && exit 1
+  [[ ${#RES[@]} -eq 0 ]] && cout "ERROR" "Version '${VER}' not found (or not upgradable) within '${TRG}' channels. Aborting execution." && cout "INFO" "TIP: run the script without parameters to see other available modes." && exit 1
 }
 
 #LABELING
@@ -309,13 +318,15 @@ function main()
   declare_vars "$0" "${args[@]}"
   check_prereq
   if [ "${ERT}" != "" ]; then
-    cout "INFO" "Errata provided (4.x.z mode), targeting '${TRG}' channels for upgrade path generation."
+    cout "INFO" "Errata provided (${MOD} mode), targeting '${TRG}' channels for upgrade path generation."
     check_release
     get_paths
     #Allow a 2nd get_paths call if same minor upgrade path generation has been selected due to empty channels (corner case)
     if [ $? -eq 2 ]; then
       CHA=("${CHANDEF[@]}")
       TRG="${MAJ}.${MIN}"
+      MOD="4.x.z."
+      cout "INFO" "Errata provided (${MOD} mode), targeting '${TRG}' channels for upgrade path generation."
       get_paths
     fi
     capture_lts
@@ -324,7 +335,7 @@ function main()
     label
     draw
   else
-    cout "INFO" "No errata provided (4.x mode), extracting default '${TRG}' channels."
+    cout "INFO" "No errata provided (${MOD} mode), extracting default '${TRG}' channels."
     check_release
     get_paths
     json2gv

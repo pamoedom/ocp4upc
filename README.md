@@ -5,15 +5,16 @@ This is a BASH script that generates a graphical output of the possible OpenShif
 ## Usage
 ~~~
 $ ./ocp4upc.sh
-------------------------------------------------------------------
-OCP4 Upgrade Paths Checker (stable fast) v2.5
+-------------------------------------------------------------------
+OCP4 Upgrade Paths Checker (stable fast) v2.6
 
 Usage:
 ./ocp4upc.sh source_version [arch]
 
 Source Version:
-4.x        Extract same-minor complete default channels  (e.g. 4.2)
-4.x.z      Generate next-minor channels upgrade paths (e.g. 4.2.26)
+4.x        Extract default graphs using same-minor channels, e.g. '4.2'
+4.x.z      Generate upgrade paths using next-minor channels, e.g. '4.2.26'
+4.x.z.     Generate upgrade paths using same-minor channels, e.g. '4.2.26.'
 
 Arch (optional):
 amd64      x86_64 (default)
