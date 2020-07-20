@@ -95,7 +95,7 @@ function declare_vars()
   NORM="${BIN}echo -en \\033[0;39m" #default
 
   ##Misc
-  PTH="/tmp/${cmd##*/}" #generate the tmp folder based on the current script name
+  PTH="/tmp/${cmd##*/}_$(date +%Y%m%d)" #generate the tmp folder based on the current script name & date
   RELf="ocp4-releases.json"
   KEY='  Key \[rank=sink,shape=none,margin=0\.3,label=< <TABLE BORDER="1" STYLE="DOTTED" CELLBORDER="0" CELLSPACING="1" CELLPADDING="0"><TR><TD COLSPAN="2"><B>Key<\/B><\/TD><\/TR><TR><TD align="left">Direct Path<\/TD><TD><FONT COLOR="'"${EDGt}"'">\&\#10230\;<\/FONT><\/TD><\/TR><TR><TD align="left">Indirect Path<\/TD><TD><FONT COLOR="'"${EDGs}"'">\&\#8594\; \&\#10511\;<\/FONT><\/TD><\/TR><\/TABLE> >\]; }'
 }
