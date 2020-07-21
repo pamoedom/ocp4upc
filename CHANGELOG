@@ -1,3 +1,13 @@
+*v2.6
+ - New mode (4.x.z.) that allows same-minor path generation.
+ - Improving some TIP messages to match new mode.
+ - Fixing corner case nested loop.
+
+*v2.5
+ - Disabling 'nounset' extra check to avoid BASH 4.x crashing
+ - Allowing same-minor path when targeting void channels (corner case)
+ - Adding 10s timeout in all user inputs
+
 *v2.4
  - Strict source_version check with regex expression.
  - Removing D/I edge labels.
