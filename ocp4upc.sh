@@ -291,7 +291,7 @@ function colorize()
 function label()
 {
   for chan in "${RES[@]}"; do ${BIN}sed -i -e 's/TITLE/'"${chan}"'/' ${PTH}/${chan}-${TRG}.gv; done
-  for chan in "${RES[@]}"; do ${BIN}sed -i -e 's/CHANNEL/"'"${chan}"'-'"${TRG}"'_'"${ARC}"' \('"$(${BIN}date --rfc-3339=date)"'\)"/' ${PTH}/${chan}-${TRG}.gv; done
+  for chan in "${RES[@]}"; do ${BIN}sed -i -e 's/CHANNEL/"'"${chan}"'-'"${TRG}"'_'"${ARC}"' \('"$(${BIN}date +%Y-%m-%d)"'\)"/' ${PTH}/${chan}-${TRG}.gv; done
 }
 
 #DRAW & EXPORT
