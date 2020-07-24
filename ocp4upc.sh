@@ -3,7 +3,7 @@ set -o pipefail
 #set -o nounset #This extra check has been disabled to avoid BASH 4.x crashing with some array boundaries.
 
 #GLOBAL STUFF
-VERSION="2.6"
+VERSION="2.7"
 [[ "${OSTYPE}" == "linux-gnu"* ]] && BIN="/usr/bin/" || BIN=""
 CHANDEF=(stable fast) #Default list of channels, modify only this one if needed.
 
