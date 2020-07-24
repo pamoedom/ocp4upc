@@ -3,10 +3,9 @@ set -o pipefail
 #set -o nounset #This extra check has been disabled to avoid BASH 4.x crashing with some array boundaries.
 
 #GLOBAL STUFF
-VERSION="2.6"
-BIN="/usr/bin"
+VERSION="2.7"
+[[ "${OSTYPE}" == "linux-gnu"* ]] && BIN="/usr/bin/" || BIN=""
 CHANDEF=(stable fast) #Default list of channels, modify only this one if needed.
-
 
 #INFO = (
 #          author      => 'Pedro Amoedo'
@@ -24,22 +23,22 @@ CHANDEF=(stable fast) #Default list of channels, modify only this one if needed.
 #USAGE
 function usage()
 {
-  ${BIN}/echo "-------------------------------------------------------------------"
-  ${BIN}/echo "OCP4 Upgrade Paths Checker ($(${BIN}/echo "${CHANDEF[@]}")) v${VERSION}"
-  ${BIN}/echo ""
-  ${BIN}/echo "Usage:"
-  ${BIN}/echo "$0 source_version [arch]"
-  ${BIN}/echo ""
-  ${BIN}/echo "Source Version:"
-  ${BIN}/echo "4.x        Extract default graphs using same-minor channels, e.g. '4.2'"
-  ${BIN}/echo "4.x.z      Generate upgrade paths using next-minor channels, e.g. '4.2.26'"
-  ${BIN}/echo "4.x.z.     Generate upgrade paths using same-minor channels, e.g. '4.2.26.'"
-  ${BIN}/echo ""
-  ${BIN}/echo "Arch (optional):"
-  ${BIN}/echo "amd64      x86_64 (default)"
-  ${BIN}/echo "s390x      IBM System/390"
-  ${BIN}/echo "ppc64le    POWER8 little endian"
-  ${BIN}/echo "-------------------------------------------------------------------"
+  ${BIN}echo "-------------------------------------------------------------------"
+  ${BIN}echo "OCP4 Upgrade Paths Checker ($(${BIN}echo "${CHANDEF[@]}")) v${VERSION}"
+  ${BIN}echo ""
+  ${BIN}echo "Usage:"
+  ${BIN}echo "$0 source_version [arch]"
+  ${BIN}echo ""
+  ${BIN}echo "Source Version:"
+  ${BIN}echo "4.x        Extract default graphs using same-minor channels, e.g. '4.2'"
+  ${BIN}echo "4.x.z      Generate upgrade paths using next-minor channels, e.g. '4.2.26'"
+  ${BIN}echo "4.x.z.     Generate upgrade paths using same-minor channels, e.g. '4.2.26.'"
+  ${BIN}echo ""
+  ${BIN}echo "Arch (optional):"
+  ${BIN}echo "amd64      x86_64 (default)"
+  ${BIN}echo "s390x      IBM System/390"
+  ${BIN}echo "ppc64le    POWER8 little endian"
+  ${BIN}echo "-------------------------------------------------------------------"
   exit 1
 }
 
@@ -59,15 +58,15 @@ function declare_vars()
 
   ##Target channel calculation & mode detection
   ! [[ ${VER} =~ ^[0-9]([.][0-9]+).*$ ]] && usage
-  MAJ=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f1)
-  MIN=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f2)
-  ERT=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f3-) #errata version provided?
+  MAJ=$(${BIN}echo ${VER} | ${BIN}cut -d. -f1)
+  MIN=$(${BIN}echo ${VER} | ${BIN}cut -d. -f2)
+  ERT=$(${BIN}echo ${VER} | ${BIN}cut -d. -f3-) #errata version provided?
   if [ "${ERT}" != "" ]; then
     [[ ${ERT} =~ ^[0-9]+$ ]] && TRG="${MAJ}.$(( ${MIN} + 1 ))" && MOD="4.x.z"
-    [[ ${ERT} =~ ^[0-9]+[.]$ ]] && TRG="${MAJ}.${MIN}" && VER=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f1,2,3) && MOD="4.x.z."
+    [[ ${ERT} =~ ^[0-9]+[.]$ ]] && TRG="${MAJ}.${MIN}" && VER=$(${BIN}echo ${VER} | ${BIN}cut -d. -f1,2,3) && MOD="4.x.z."
     [[ ${TRG} = "" ]] && usage
   else
-    VER=$(${BIN}/echo ${VER} | ${BIN}/cut -d. -f1,2)
+    VER=$(${BIN}echo ${VER} | ${BIN}cut -d. -f1,2)
     TRG="${VER}"
     MOD="4.x"
   fi
@@ -89,14 +88,14 @@ function declare_vars()
   EXT=() #array of direct nodes (if any)
 
   ##Ansi colors
-  OK="${BIN}/echo -en \\033[1;32m" #green
-  ERROR="${BIN}/echo -en \\033[1;31m" #red
-  WARN="${BIN}/echo -en \\033[1;33m" #yellow
-  INFO="${BIN}/echo -en \\033[1;34m" #blue
-  NORM="${BIN}/echo -en \\033[0;39m" #default
+  OK="${BIN}echo -en \\033[1;32m" #green
+  ERROR="${BIN}echo -en \\033[1;31m" #red
+  WARN="${BIN}echo -en \\033[1;33m" #yellow
+  INFO="${BIN}echo -en \\033[1;34m" #blue
+  NORM="${BIN}echo -en \\033[0;39m" #default
 
   ##Misc
-  PTH="/tmp/${cmd##*/}" #generate the tmp folder based on the current script name
+  PTH="/tmp/${cmd##*/}_$(date +%Y%m%d)" #generate the tmp folder based on the current script name & date
   RELf="ocp4-releases.json"
   KEY='  Key \[rank=sink,shape=none,margin=0\.3,label=< <TABLE BORDER="1" STYLE="DOTTED" CELLBORDER="0" CELLSPACING="1" CELLPADDING="0"><TR><TD COLSPAN="2"><B>Key<\/B><\/TD><\/TR><TR><TD align="left">Direct Path<\/TD><TD><FONT COLOR="'"${EDGt}"'">\&\#10230\;<\/FONT><\/TD><\/TR><TR><TD align="left">Indirect Path<\/TD><TD><FONT COLOR="'"${EDGs}"'">\&\#8594\; \&\#10511\;<\/FONT><\/TD><\/TR><\/TABLE> >\]; }'
 }
@@ -105,22 +104,22 @@ function declare_vars()
 function cout()
 {
   [[ -z ${3-} ]] && opts="" || opts=$3
-  ${BIN}/echo -n "[" && eval "\$$1" && ${BIN}/echo -n "$1" && $NORM && ${BIN}/echo -n "] " && ${BIN}/echo ${opts} "$2"
+  ${BIN}echo -n "[" && eval "\$$1" && ${BIN}echo -n "$1" && $NORM && ${BIN}echo -n "] " && ${BIN}echo ${opts} "$2"
 }
 
 #PREREQUISITES
 function check_prereq()
 {
   ##all tools available?
-  cout "INFO" "Checking prerequisites ($(${BIN}/echo "${REQ[@]}"))... " "-n"
-  for tool in "${REQ[@]}"; do ${BIN}/which ${tool} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "'${tool}' not present. Aborting execution." && exit 1; done
+  cout "INFO" "Checking prerequisites ($(${BIN}echo "${REQ[@]}"))... " "-n"
+  for tool in "${REQ[@]}"; do ${BIN}which ${tool} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "'${tool}' not present. Aborting execution." && exit 1; done
 
   ##tmp folder writable?
   if [ -d ${PTH} ]; then
-    ${BIN}/touch ${PTH}/test; [ $? -ne 0 ] && cout "ERROR" "Unable to write in ${PTH}. Aborting execution." && exit 1
-    ${BIN}/rm ${PTH}/*.json ${PTH}/*.gv > /dev/null 2>&1
+    ${BIN}touch ${PTH}/test; [ $? -ne 0 ] && cout "ERROR" "Unable to write in ${PTH}. Aborting execution." && exit 1
+    ${BIN}rm ${PTH}/*.json ${PTH}/*.gv > /dev/null 2>&1
   else
-    ${BIN}/mkdir ${PTH}; [ $? -ne 0 ] && cout "ERROR" "Unable to write in ${PTH}. Aborting execution." && exit 1
+    ${BIN}mkdir ${PTH}; [ $? -ne 0 ] && cout "ERROR" "Unable to write in ${PTH}. Aborting execution." && exit 1
   fi
   cout "OK" ""
 }
@@ -128,7 +127,7 @@ function check_prereq()
 #RELEASE CHECKING
 function check_release()
 {
-  ${BIN}/curl -sH 'Accept:application/json' "${REL}" | ${BIN}/jq . > ${PTH}/${RELf}
+  ${BIN}curl -sH 'Accept:application/json' "${REL}" | ${BIN}jq . > ${PTH}/${RELf}
   if [ $? -ne 0 ]; then
     cout "WARN" "Unable to curl '${REL}'"
     cout "WARN" "Do you want to continue omitting sanity checks? (y/N):" "-n"
@@ -139,20 +138,20 @@ function check_release()
   if [ "${ERT}" = "" ]; then
     cout "INFO" "Checking if '${VER}' (${ARC}) has valid channels... " "-n"
     if [ "${ARC}" = "amd64" ]; then
-      ${BIN}/grep "\"${VER}.*-x86_64\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
+      ${BIN}grep "\"${VER}.*-x86_64\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
     else
-      ${BIN}/grep "\"${VER}.*-${ARC}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
+      ${BIN}grep "\"${VER}.*-${ARC}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && exit 1
     fi
   else
     cout "INFO" "Checking if '${VER}' (${ARC}) is a valid release... " "-n"
     if [ "${ARC}" = "amd64" ]; then
-      ${BIN}/grep "\"${VER}-x86_64\"" ${PTH}/${RELf} &>/dev/null;
+      ${BIN}grep "\"${VER}-x86_64\"" ${PTH}/${RELf} &>/dev/null;
       ##for amd64 make an extra attempt without -x86_64 because old releases don't have any suffix
       if [ $? -ne 0 ]; then
-        ${BIN}/grep "\"${VER}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && cout "INFO" "TIP: run the script without parameters to see other available architectures." && exit 1
+        ${BIN}grep "\"${VER}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && cout "INFO" "TIP: run the script without parameters to see other available architectures." && exit 1
       fi
     else
-      ${BIN}/grep "\"${VER}-${ARC}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && cout "INFO" "TIP: run the script without parameters to see other available architectures." && exit 1
+      ${BIN}grep "\"${VER}-${ARC}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERROR" "" && cout "INFO" "TIP: run the script without parameters to see other available architectures." && exit 1
     fi
   fi
   cout "OK" ""
@@ -163,12 +162,12 @@ function get_paths()
 {
   i=0
   for chan in "${CHA[@]}"; do
-    ${BIN}/curl -sH 'Accept:application/json' "${GPH}?channel=${chan}-${TRG}&arch=${ARC}" > ${PTH}/${chan}-${TRG}.json
+    ${BIN}curl -sH 'Accept:application/json' "${GPH}?channel=${chan}-${TRG}&arch=${ARC}" > ${PTH}/${chan}-${TRG}.json
     [[ $? -ne 0 ]] && cout "ERROR" "Unable to curl '${GPH}?channel=${chan}-${TRG}&arch=${ARC}'" && cout "ERROR" "Execution interrupted, try again later." && exit 1
     ##discard empty channels
-    ${BIN}/echo -n '{"nodes":[],"edges":[]}' | ${BIN}/diff ${PTH}/${chan}-${TRG}.json - &>/dev/null; [ $? -eq 0 ] && cout "WARN" "Skipping channel '${chan}-${TRG}_${ARC}', it's empty." && continue
+    ${BIN}echo -n '{"nodes":[],"edges":[]}' | ${BIN}diff ${PTH}/${chan}-${TRG}.json - &>/dev/null; [ $? -eq 0 ] && cout "WARN" "Skipping channel '${chan}-${TRG}_${ARC}', it's empty." && continue
     ##discard duplicated channels
-    [[ $i -ne 0 ]] && ${BIN}/diff ${PTH}/${chan}-${TRG}.json ${PTH}/${CHA[$(( $i - 1 ))]}-${TRG}.json &>/dev/null; [ $? -eq 0 ] && cout "WARN" "Discarding channel '${chan}-${TRG}_${ARC}', it doesn't differ from '${CHA[$(( $i - 1 ))]}-${TRG}_${ARC}'." && continue
+    [[ $i -ne 0 ]] && ${BIN}diff ${PTH}/${chan}-${TRG}.json ${PTH}/${CHA[$(( $i - 1 ))]}-${TRG}.json &>/dev/null; [ $? -eq 0 ] && cout "WARN" "Discarding channel '${chan}-${TRG}_${ARC}', it doesn't differ from '${CHA[$(( $i - 1 ))]}-${TRG}_${ARC}'." && continue
     RES=("${RES[@]}" "${chan}")
     (( i++ ))
   done
@@ -190,7 +189,7 @@ function capture_lts()
 {
   for chan in "${CHA[@]}"; do
     var="LTS_${chan}"
-    eval "${var}"="("$(${BIN}/cat ${PTH}/${chan}-${TRG}.json | ${BIN}/jq . | ${BIN}/grep "\"${TRG}." | ${BIN}/cut -d'"' -f4 | ${BIN}/sort -urV | ${BIN}/xargs)")"
+    eval "${var}"="("$(${BIN}cat ${PTH}/${chan}-${TRG}.json | ${BIN}jq . | ${BIN}grep "\"${TRG}." | ${BIN}cut -d'"' -f4 | ${BIN}sort -urV | ${BIN}xargs)")"
   done
 }
 
@@ -198,7 +197,7 @@ function capture_lts()
 function json2gv()
 {
   ##prepare the raw jq filter
-  JQ_SCRIPT=$(${BIN}/echo '"digraph TITLE {\n  labelloc=c;\n  rankdir=BT;\n  label=CHANNEL" as $header |
+  JQ_SCRIPT=$(${BIN}echo '"digraph TITLE {\n  labelloc=c;\n  rankdir=BT;\n  label=CHANNEL" as $header |
     (
       [
         .nodes |
@@ -208,11 +207,11 @@ function json2gv()
             if .value.metadata.url then ",url=\"" + .value.metadata.url + "\"" else "" end
 	    ) + (')
   if [ "${ERT}" != "" ]; then
-    JQ_SCRIPT=${JQ_SCRIPT}$(${BIN}/echo '            if .value.version == "'"${VER}"'" then ",shape=polygon,sides=5,peripheries=2,style=filled,color='"${NODs}"'"')
+    JQ_SCRIPT=${JQ_SCRIPT}$(${BIN}echo '            if .value.version == "'"${VER}"'" then ",shape=polygon,sides=5,peripheries=2,style=filled,color='"${NODs}"'"')
   else
-    JQ_SCRIPT=${JQ_SCRIPT}$(${BIN}/echo '            if .value.version == "" then ",shape=polygon,sides=5,peripheries=3,style=filled,color='"${NODs}"'"')
+    JQ_SCRIPT=${JQ_SCRIPT}$(${BIN}echo '            if .value.version == "" then ",shape=polygon,sides=5,peripheries=3,style=filled,color='"${NODs}"'"')
   fi
-  JQ_SCRIPT=${JQ_SCRIPT}$(${BIN}/echo '            elif .value.version >= "'"${TRG}"'" then ",shape=square,style=filled,color='"${DEF}"'"
+  JQ_SCRIPT=${JQ_SCRIPT}$(${BIN}echo '            elif .value.version >= "'"${TRG}"'" then ",shape=square,style=filled,color='"${DEF}"'"
             else ",shape=ellipse,style=filled,color='"${DEF}"'"
             end
           ) +
@@ -229,7 +228,7 @@ function json2gv()
 
   ##generate the gv files
   for chan in "${CHA[@]}"; do
-    ${BIN}/jq -r "${JQ_SCRIPT}" ${PTH}/${chan}-${TRG}.json > ${PTH}/${chan}-${TRG}.gv
+    ${BIN}jq -r "${JQ_SCRIPT}" ${PTH}/${chan}-${TRG}.json > ${PTH}/${chan}-${TRG}.gv
     [[ $? -ne 0 ]] && cout "ERROR" "Unable to create ${PTH}/${chan}-${TRG}.gv file. Aborting execution." && exit 1
   done
 }
@@ -246,7 +245,7 @@ function colorize()
     [[ -z ${!arr-} ]] && cout "WARN" "Skipping channel '${chan}-${TRG}_${ARC}', no upgrade paths available." && continue
 
     ##capture list of outgoing edges (possible indirect nodes)
-    IND=($(grep "\s\s${posV}->" ${PTH}/${chan}-${TRG}.gv | ${BIN}/cut -d">" -f2 | ${BIN}/cut -d";" -f1))
+    IND=($(grep "\s\s${posV}->" ${PTH}/${chan}-${TRG}.gv | ${BIN}cut -d">" -f2 | ${BIN}cut -d";" -f1))
 
     ##colorize EXT->LTS edges
     for target in "${!arr}"; do
@@ -255,16 +254,16 @@ function colorize()
         for node in "${IND[@]}"; do
           ##Direct edges
           if [ "${node}" = "${posT}" ]; then
-            ${BIN}/sed -i -e 's/^\(\s\s'"${posV}"'->'"${posT}"'\)\;$/\1 [color='"${EDGt}"'\,style=bold];/' ${PTH}/${chan}-${TRG}.gv
-            ${BIN}/sed -i -e 's/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
+            ${BIN}sed -i -e 's/^\(\s\s'"${posV}"'->'"${posT}"'\)\;$/\1 [color='"${EDGt}"'\,style=bold];/' ${PTH}/${chan}-${TRG}.gv
+            ${BIN}sed -i -e 's/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
             continue
           fi
           ##Indirect edges
           ###grep is needed here because sed doesn't return a different exit code when matching
-          ${BIN}/grep "\s\s${node}->${posT};" ${PTH}/${chan}-${TRG}.gv &>/dev/null
+          ${BIN}grep "\s\s${node}->${posT};" ${PTH}/${chan}-${TRG}.gv &>/dev/null
           if [ $? -eq 0 ]; then
             ##if match, colorize indirect node, indirect edge & target node at the same time (triple combo)
-            ${BIN}/sed -i -e 's/^\(\s\s'"${node}"'\s.*\),color=.*$/\1,color='"${NODi}"' ]\;/;s/^\(\s\s'"${node}"'->'"${posT}"'\)\;$/\1 [color='"${EDGs}"',style=dashed];/;s/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
+            ${BIN}sed -i -e 's/^\(\s\s'"${node}"'\s.*\),color=.*$/\1,color='"${NODi}"' ]\;/;s/^\(\s\s'"${node}"'->'"${posT}"'\)\;$/\1 [color='"${EDGs}"',style=dashed];/;s/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}.gv
             ##save final list of indirect nodes to be used below for pending source edges
             EXT=("${EXT[@]}" "${node}")
           fi
@@ -272,13 +271,13 @@ function colorize()
       fi
     done
     ##colorize rest of source edges not yet processed
-    for node in "${EXT[@]}"; do ${BIN}/sed -i -e 's/^\(\s\s'"${posV}"'->'"${node}"'\)\;$/\1 [color='"${EDGs}"',style=filled];/' ${PTH}/${chan}-${TRG}.gv; done
+    for node in "${EXT[@]}"; do ${BIN}sed -i -e 's/^\(\s\s'"${posV}"'->'"${node}"'\)\;$/\1 [color='"${EDGs}"',style=filled];/' ${PTH}/${chan}-${TRG}.gv; done
 
     ##remove non involved nodes+edges to simplify the graph
-    ${BIN}/sed -i -e '/color='"${DEF}"'/d;/[0-9]\;$/d' ${PTH}/${chan}-${TRG}.gv
+    ${BIN}sed -i -e '/color='"${DEF}"'/d;/[0-9]\;$/d' ${PTH}/${chan}-${TRG}.gv
 
     ##include the graph legend
-    ${BIN}/sed -i -e 's/^}$/'"${KEY}"'/' ${PTH}/${chan}-${TRG}.gv
+    ${BIN}sed -i -e 's/^}$/'"${KEY}"'/' ${PTH}/${chan}-${TRG}.gv
 
     ##save resulting channels for subsequent operations
     RES=("${RES[@]}" "${chan}")
@@ -291,8 +290,8 @@ function colorize()
 #LABELING
 function label()
 {
-  for chan in "${RES[@]}"; do ${BIN}/sed -i -e 's/TITLE/'"${chan}"'/' ${PTH}/${chan}-${TRG}.gv; done
-  for chan in "${RES[@]}"; do ${BIN}/sed -i -e 's/CHANNEL/"'"${chan}"'-'"${TRG}"'_'"${ARC}"' \('"$(${BIN}/date --rfc-3339=date)"'\)"/' ${PTH}/${chan}-${TRG}.gv; done
+  for chan in "${RES[@]}"; do ${BIN}sed -i -e 's/TITLE/'"${chan}"'/' ${PTH}/${chan}-${TRG}.gv; done
+  for chan in "${RES[@]}"; do ${BIN}sed -i -e 's/CHANNEL/"'"${chan}"'-'"${TRG}"'_'"${ARC}"' \('"$(${BIN}date +%Y-%m-%d)"'\)"/' ${PTH}/${chan}-${TRG}.gv; done
 }
 
 #DRAW & EXPORT
@@ -300,12 +299,12 @@ function draw()
 {
   if [ "${ERT}" != "" ]; then
     for chan in "${RES[@]}"; do
-      ${BIN}/dot -Tsvg ${PTH}/${chan}-${TRG}.gv -o ${chan}-${TRG}_${ARC}_$(date +%Y%m%d).svg
+      ${BIN}dot -Tsvg ${PTH}/${chan}-${TRG}.gv -o ${chan}-${TRG}_${ARC}_$(date +%Y%m%d).svg
       [[ $? -ne 0 ]] && cout "ERROR" "Unable to export the results. Aborting execution." && exit 1 || cout "INFO" "Result exported as '${chan}-${TRG}_${ARC}_$(date +%Y%m%d).svg'"
     done
   else
     for chan in "${RES[@]}"; do
-      ${BIN}/dot -Tsvg ${PTH}/${chan}-${TRG}.gv -o ${chan}-${TRG}_${ARC}_def_$(date +%Y%m%d).svg 
+      ${BIN}dot -Tsvg ${PTH}/${chan}-${TRG}.gv -o ${chan}-${TRG}_${ARC}_def_$(date +%Y%m%d).svg 
       [[ $? -ne 0 ]] && cout "ERROR" "Unable to export the results. Aborting execution." && exit 1 || cout "INFO" "Result exported as '${chan}-${TRG}_${ARC}_def_$(date +%Y%m%d).svg'"
     done
   fi
