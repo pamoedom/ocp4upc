@@ -1,3 +1,8 @@
+*v2.7
+- Harcoding BIN only for "linux-gnu"
+- Adding timestamp to tmp folder creation.
+- Making all "date" calls POSIX compatible.
+
 *v2.6
  - New mode (4.x.z.) that allows same-minor path generation.
  - Improving some TIP messages to match new mode.
