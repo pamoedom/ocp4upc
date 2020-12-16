@@ -2,7 +2,7 @@
 OpenShift4 (OCP4) Upgrade Paths Checker
 
 ## Description
-This is a BASH script that generates a graphical output of the possible OpenShift4 **minor upgrade paths** using **stable**, **fast** and **eus** production-ready [channels](https://docs.openshift.com/container-platform/4.6/updating/updating-cluster-between-minor.html#understanding-upgrade-channels_updating-cluster-between-minor).
+This is a BASH script that generates a graphical output of the possible OpenShift4 **minor upgrade paths** using "stable", "fast"" and ""eus"" production-ready [channels](https://docs.openshift.com/container-platform/4.6/updating/updating-cluster-between-minor.html#understanding-upgrade-channels_updating-cluster-between-minor).
 
 **NOTE**: there is also a "candidate" channel that shouldn't be used for production purposes, if you want the script to also contemplate that one, simply modify `CHANDEF` variable in this [line](https://github.com/pamoedom/ocp4upc/blob/master/ocp4upc.sh#L8) and include it.
 
@@ -10,7 +10,7 @@ This is a BASH script that generates a graphical output of the possible OpenShif
 ~~~
 $ ./ocp4upc.sh
 -------------------------------------------------------------------
-OCP4 Upgrade Paths Checker (stable fast) v2.8
+OCP4 Upgrade Paths Checker (stable fast eus) v2.8
 
 Usage:
 ./ocp4upc.sh source_version [arch]
