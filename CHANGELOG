@@ -1,3 +1,6 @@
+*v2.8
+- Including new EUS (Extended Update Support) channel.
+
 *v2.7
 - Harcoding BIN only for "linux-gnu"
 - Adding timestamp to tmp folder creation.
