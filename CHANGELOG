@@ -1,3 +1,8 @@
+*v3.1
+- Fixing multigraph bug for other archs when first target is not suitable
+- Modifying multigraph channel type selection to be fully dynamic
+- Homogenize output file names
+
 *v3.0
 - Multigraph mode '4.x.z-' (experimental)
 - Re-enabling 'nounset' for BASH >= 5

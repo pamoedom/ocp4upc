@@ -3,7 +3,7 @@ set -o pipefail
 [[ $(echo $BASH_VERSION | cut -d. -f1) -ge "5" ]] && set -o nounset #https://github.com/pamoedom/ocp4upc/issues/3
 
 #GLOBAL STUFF
-VERSION="3.0"
+VERSION="3.1"
 [[ "${OSTYPE}" == "linux-gnu"* ]] && BIN="/usr/bin/" || BIN="" #https://github.com/pamoedom/ocp4upc/issues/5
 CHANDEF=(stable fast eus) #Default list of channels, add/remove channels only here (if needed), the script will do the rest ;) 
 
@@ -342,7 +342,9 @@ function colorize()
 
   ##abort if the provided release is not present within any of the channels
   if [ ${#RES[@]} -eq 0 ];then
-    if [ "${MOD}" != "4.x.z-" ]; then
+    if [ "${MOD}" == "4.x.z-" ]; then
+      return 1
+    else
       cout "ERRO" "Version '${VER}' not found (or not upgradable) within '${TRG}' channels. Aborting execution."
       cout "HINT" "Run the script without parameters to see other available modes."
       exit 1
@@ -391,24 +393,24 @@ function draw()
   ###Single path modes
   "4.x.z" | "4.x.z.")
     for chan in "${RES[@]}"; do
-      ${BIN}dot -Tsvg ${PTH}/${chan}-${TRG}_${ver}.gv -o ${chan}-${TRG}_${ver}-${ARC}_${date}.svg 
+      ${BIN}dot -Tsvg ${PTH}/${chan}-${TRG}_${ver}.gv -o ${chan}-${TRG}_${ver}_${ARC}_${date}.svg 
       if [ $? -ne 0 ]; then
         cout "ERRO" "Unable to export the results. Aborting execution."
         exit 1
       else
-        cout "INFO" "Result exported as '${chan}-${TRG}_${ver}-${ARC}_${date}.svg'"
+        cout "INFO" "Result exported as '${chan}-${TRG}_${ver}_${ARC}_${date}.svg'"
       fi
     done
   ;;
   ###Multigraph mode
   "4.x.z-")
     for chan in "${RES[@]}"; do
-      ${BIN}dot -Tsvg ${PTH}/${chan}-multigraph.gv -o ${chan}-multigraph_${ver}-${TRG}_${date}.svg
+      ${BIN}dot -Tsvg ${PTH}/${chan}-multigraph.gv -o ${chan}-multigraph_${ver}-${TRG}_${ARC}_${date}.svg
       if [ $? -ne 0 ]; then
         cout "ERRO" "Unable to export the results. Aborting execution."
         exit 1
       else
-        cout "INFO" "Result exported as '${chan}-multigraph_${ver}-${TRG}_${date}.svg'"
+        cout "INFO" "Result exported as '${chan}-multigraph_${ver}-${TRG}_${ARC}_${date}.svg'"
       fi
     done
   ;;
@@ -430,7 +432,7 @@ function main()
   case "${MOD}" in
   ###Default channels
   "4.x")
-    cout "INFO" "Detected mode '${MOD}', extracting default channels '${TRG}'."
+    cout "INFO" "Detected mode '${MOD}', extracting default '${TRG}' channels."
     get_paths
     json2gv
     label
@@ -465,7 +467,9 @@ function main()
     cout "INPT" "Select channel type from the list" "-n"
     ${BIN}echo -n " [$(${BIN}echo "${CHANDEF[@]}")]: "
     read -t 20 chan
-    ! [[ ${chan} =~ ^([s][t][a][b][l][e]|[f][a][s][t]|[e][u][s])$ ]] && cout "ERRO" "Invalid selection or timed out. Execution interrupted." && exit 1    
+    local match="false" #make the channel selection dynamic
+    for opt in "${CHA[@]}"; do [[ "${opt}" != "${chan}" ]] && continue || match="true"; done
+    [[ "${match}" != "true" ]] && cout "ERRO" "Invalid selection or timed out. Execution interrupted." && exit 1
     CHA=("${chan}")
     local verI="${VER}" #save the initial version value for multigraph draw function
     TRG="${TRGa[0]}"
@@ -475,6 +479,11 @@ function main()
     capture_lts "2" #limited to the latest 2 targets to simplify the graph
     json2gv "${i}"
     colorize
+    if [ $? -eq 1 ]; then
+      cout "ERRO" "Version '${VER}' not found (or not upgradable) within '${TRG}' channel. Aborting execution."
+      cout "HINT" "Run the script without parameters to see other available modes."
+      exit 1
+    fi
     label
     ${BIN}cat ${PTH}/${chan}-${TRG}_${VER}.gv >> ${PTH}/${chan}-multigraph.gv #always dump the first target
     [ $? -ne 0 ] && cout "ERRO" "Unable to write in '${PTH}'. Aborting execution." && exit 1

@@ -43,10 +43,10 @@ $ ocp4upc 4.5.20
 [INFO] Checking if '4.5.20' (amd64) is a valid release... [SUCC] 
 [INFO] Detected mode '4.x.z', targeting channels '4.6' for upgrade path generation.
 [WARN] Skipping channel 'eus-4.6_amd64', version not found.
-[INFO] Result exported as 'stable-4.6_4.5.20-amd64_20210207.svg'
-[INFO] Result exported as 'fast-4.6_4.5.20-amd64_20210207.svg'
+[INFO] Result exported as 'stable-4.6_4.5.20_amd64_20210208.svg'
+[INFO] Result exported as 'fast-4.6_4.5.20_amd64_20210208.svg'
 ~~~
-![fast-4.6](https://github.com/pamoedom/ocp4upc/blob/master/examples/fast-4.6_4.5.20-amd64_20210207.png)
+![stable-4.6](https://github.com/pamoedom/ocp4upc/blob/master/examples/stable-4.6_4.5.20_amd64_20210208.png)
 
 ~~~
 $ ocp4upc 4.2.26-4.6
@@ -60,9 +60,9 @@ $ ocp4upc 4.2.26-4.6
 [INFO] Processing 'stable-4.5' edges... 
 [INFO] Processing 'stable-4.6' edges... 
 [WARN] Skipping file 'stable-4.6_4.5.30.gv', no upgrade paths available.
-[INFO] Result exported as 'stable-multigraph_4.2.26-4.6_20210207.svg'
+[INFO] Result exported as 'stable-multigraph_4.2.26-4.6_amd64_20210207.svg'
 ~~~
-![stable-multigraph-4.6](https://github.com/pamoedom/ocp4upc/blob/master/examples/stable-multigraph_4.2.26-4.6_20210207.png)
+![stable-multigraph-4.6](https://github.com/pamoedom/ocp4upc/blob/master/examples/stable-multigraph_4.2.26-4.6_amd64_20210208.png)
 
 ## Dependencies
 - [`curl`](https://curl.haxx.se/)
