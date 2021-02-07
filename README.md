@@ -12,7 +12,7 @@ $ git clone git@github.com:pamoedom/ocp4upc.git
 $ ln -s ${PWD}/ocp4upc/ocp4upc.sh ~/bin/ocp4upc
 ~~~
 
-**NOTE**: on this manner the upgrade is as simple as `git push` within the repository.
+**NOTE**: on this manner the upgrade is as simple as `git pull` within the local repository.
 
 ## Usage
 ~~~
