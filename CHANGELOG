@@ -1,3 +1,17 @@
+*v3.0
+- Multigraph mode '4.x.z-' (experimental)
+- Re-enabling 'nounset' for BASH >= 5
+- Improving some regex patterns
+- Adding github issue numbering
+- Fix some unbound variables
+- Skipping channels where the VER has no outgoing edges.
+- Properly isolating "local" variables
+- Adding new HINT, INPT & DEBG ansi colors
+- Homogenize 'cout' variables format
+- Changing output file names to include source version
+- Demultiplexing 'sed' calls for better readability
+- Homogenize 'if' expressions
+
 *v2.8
 - Including new EUS (Extended Update Support) channel.
 
