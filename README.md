@@ -10,9 +10,9 @@ This is a BASH script that generates a graphical output of the possible OpenShif
 ~~~
 $ git clone git@github.com:pamoedom/ocp4upc.git
 $ ln -s ${PWD}/ocp4upc/ocp4upc.sh ~/bin/ocp4upc
+~~~
 
 **NOTE**: on this manner the upgrade is as simple as `git push` within the repository.
-~~~
 
 ## Usage
 ~~~
@@ -53,7 +53,7 @@ $ ocp4upc 4.2.26-4.6
 [INFO] Checking prerequisites (curl jq dot)... [SUCC] 
 [INFO] Checking if '4.2.26' (amd64) is a valid release... [SUCC] 
 [INFO] Detected mode '4.x.z-', targeting channels '4.3 4.4 4.5 4.6' for multigraph generation.
-[WARN] This is an EXPERIMENTAL mode targeting only 2 latest releases per channel
+[WARN] This is an EXPERIMENTAL mode targeting only 2 latest releases per channel.
 [INPT] Select channel type from the list [stable fast eus]: stable
 [INFO] Processing 'stable-4.3' edges... 
 [INFO] Processing 'stable-4.4' edges... 
