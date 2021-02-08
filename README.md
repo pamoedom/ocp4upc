@@ -4,7 +4,7 @@ OpenShift4 (OCP4) Upgrade Paths Checker
 ## Description
 This is a BASH script that generates a graphical output of the possible OpenShift4 **minor upgrade paths** using "stable", "fast" and "eus" production-ready [channels](https://docs.openshift.com/container-platform/4.6/updating/updating-cluster-between-minor.html#understanding-upgrade-channels_updating-cluster-between-minor).
 
-**NOTE**: there is also a "candidate" channel that shouldn't be used for production purposes, if you want the script to also contemplate that one, simply modify `CHANDEF` variable in this [line](https://github.com/pamoedom/ocp4upc/blob/master/ocp4upc.sh#L8) and include it.
+**NOTE**: there is also a "candidate" channel that shouldn't be used for production purposes, if you want the script to also contemplate that one, simply modify `CHANDEF` variable in this [line](https://github.com/pamoedom/ocp4upc/blob/master/ocp4upc.sh#L8) and the script will do the rest ;)
 
 ## Installation
 ~~~
@@ -18,7 +18,7 @@ $ ln -s ${PWD}/ocp4upc/ocp4upc.sh ~/bin/ocp4upc
 ~~~
 $ ocp4upc
 -------------------------------------------------------------------
-OCP4 Upgrade Paths Checker (stable fast eus) v3.0
+OCP4 Upgrade Paths Checker (stable fast eus) v3.1
 
 Usage:
 /home/pamoedo/bin/ocp4upc version [arch]
@@ -60,7 +60,7 @@ $ ocp4upc 4.2.26-4.6
 [INFO] Processing 'stable-4.5' edges... 
 [INFO] Processing 'stable-4.6' edges... 
 [WARN] Skipping file 'stable-4.6_4.5.30.gv', no upgrade paths available.
-[INFO] Result exported as 'stable-multigraph_4.2.26-4.6_amd64_20210207.svg'
+[INFO] Result exported as 'stable-multigraph_4.2.26-4.6_amd64_20210208.svg'
 ~~~
 ![stable-multigraph-4.6](https://github.com/pamoedom/ocp4upc/blob/master/examples/stable-multigraph_4.2.26-4.6_amd64_20210208.png)
 
