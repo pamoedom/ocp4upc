@@ -1,4 +1,14 @@
+*v3.2
+- Multigraph customization
+- Multigraph dead paths colorization (if any)
+- New multigraph legend to include dead paths
+- Adding different exit/error codes
+- Homogenize 'sed' escaped characters
+- Improving 'cout' function for void messages
+- Fixing multigraph corner case with empty RES array
+
 *v3.1
+- Fixing multigraph bug for other archs when first target is not suitable
 - Fixing multigraph bug for other archs when first target is not suitable
 - Modifying multigraph channel type selection to be fully dynamic
 - Homogenize output file names

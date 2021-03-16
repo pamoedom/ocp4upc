@@ -3,7 +3,7 @@ set -o pipefail
 [[ $(echo $BASH_VERSION | cut -d. -f1) -ge "5" ]] && set -o nounset #https://github.com/pamoedom/ocp4upc/issues/3
 
 #GLOBAL STUFF
-VERSION="3.1"
+VERSION="3.2"
 [[ "${OSTYPE}" == "linux-gnu"* ]] && BIN="/usr/bin/" || BIN="" #https://github.com/pamoedom/ocp4upc/issues/5
 CHANDEF=(stable fast eus) #Default list of channels, add/remove channels only here (if needed), the script will do the rest ;) 
 
@@ -17,29 +17,35 @@ CHANDEF=(stable fast eus) #Default list of channels, add/remove channels only he
 #       );
 
 #ARGs DESCRIPTION
-#$1=version/mode (mandatory), to be used as starting point + mode
+#$1=release/mode (mandatory), to be used as starting point + mode
 #$2=architecture (optional), default is amd64
+
+#EXIT CODES
+#0 Successful run (EOF)
+#1 Bad parameter (usage)
+#2 Execution aborted (unexpected failure, network issue, etc)
+#3 Execution interrupted (wrong input, timed out, etc)
 
 #USAGE
 function usage()
 {
-  ${BIN}echo "-------------------------------------------------------------------"
+  ${BIN}echo "-----------------------------------------------------------------"
   ${BIN}echo "OCP4 Upgrade Paths Checker ($(${BIN}echo "${CHANDEF[@]}")) v${VERSION}"
-  ${BIN}echo ""
+  ${BIN}echo
   ${BIN}echo "Usage:"
-  ${BIN}echo "$0 version [arch]"
-  ${BIN}echo ""
-  ${BIN}echo "Version/Mode:"
+  ${BIN}echo "$0 <release/mode> [arch]"
+  ${BIN}echo
+  ${BIN}echo "Release/Mode (mandatory):"
   ${BIN}echo "4.x        Extract default graphs using same-minor channels"
   ${BIN}echo "4.x.z      Generate upgrade paths using next-minor channels"
   ${BIN}echo "4.x.z.     Generate upgrade paths using same-minor channels"
-  ${BIN}echo "4.x.z-4.y  Generate upgrade paths using multi-minor channels (experimental)"
-  ${BIN}echo ""
+  ${BIN}echo "4.x.z-4.y  Generate upgrade paths using multi-minor channels"
+  ${BIN}echo
   ${BIN}echo "Arch (optional):"
   ${BIN}echo "amd64      x86_64 (default)"
   ${BIN}echo "s390x      IBM System/390"
   ${BIN}echo "ppc64le    POWER8/9 little endian"
-  ${BIN}echo "-------------------------------------------------------------------"
+  ${BIN}echo "-----------------------------------------------------------------"
   exit 1
 }
 
@@ -109,13 +115,15 @@ function declare_vars()
   PTH="/tmp/${cmd##*/}_$(date +%Y%m%d)" #generate the tmp folder based on the current script name & date
   RELf="ocp4-releases.json"
   KEY='\n  Key \[rank=sink,shape=none,margin=0\.3,label=< <TABLE BORDER="1" STYLE="DOTTED" CELLBORDER="0" CELLSPACING="1" CELLPADDING="0"><TR><TD COLSPAN="2"><B>Key<\/B><\/TD><\/TR><TR><TD align="left">Direct Path<\/TD><TD><FONT COLOR="'"${EDGt}"'">\&\#10230\;<\/FONT><\/TD><\/TR><TR><TD align="left">Indirect Path<\/TD><TD><FONT COLOR="'"${EDGs}"'">\&\#8594\; \&\#10511\;<\/FONT><\/TD><\/TR><\/TABLE> >\];\n}' #embedded HTML legend
+  KEYm='\n  Key \[rank=sink,shape=none,margin=0\.3,label=< <TABLE BORDER="1" STYLE="DOTTED" CELLBORDER="0" CELLSPACING="1" CELLPADDING="0"><TR><TD COLSPAN="2"><B>Key<\/B><\/TD><\/TR><TR><TD align="left">Direct Path<\/TD><TD><FONT COLOR="'"${EDGt}"'">\&\#10230\;<\/FONT><\/TD><\/TR><TR><TD align="left">Dead Path (if any)<\/TD><TD><FONT COLOR="'"${DEF}"'">\&\#10230\;<\/FONT><\/TD><\/TR><TR><TD align="left">Indirect Path<\/TD><TD><FONT COLOR="'"${EDGs}"'">\&\#8594\; \&\#10511\;<\/FONT><\/TD><\/TR><\/TABLE> >\];\n}' #embedded HTML legend (multigraph mode)
 }
 
 #PRETTY PRINT ($type_of_msg,$string,$echo_opts)
 function cout()
 {
+  [[ -z ${2-} ]] && str="" || str=$2
   [[ -z ${3-} ]] && opts="" || opts=$3
-  ${BIN}echo -n "[" && eval "\$$1" && ${BIN}echo -n "$1" && $NORM && ${BIN}echo -n "] " && ${BIN}echo ${opts} "$2"
+  ${BIN}echo -n "[" && eval "\$$1" && ${BIN}echo -n "$1" && $NORM && ${BIN}echo -n "] " && ${BIN}echo ${opts} "$str"
 }
 
 #PREREQUISITES
@@ -123,16 +131,16 @@ function check_prereq()
 {
   ##all tools available?
   cout "INFO" "Checking prerequisites ($(${BIN}echo "${REQ[@]}"))... " "-n"
-  for tool in "${REQ[@]}"; do ${BIN}which ${tool} &>/dev/null; [ $? -ne 0 ] && cout "ERRO" "'${tool}' not present. Aborting execution." && exit 1; done
+  for tool in "${REQ[@]}"; do ${BIN}which ${tool} &>/dev/null; [ $? -ne 0 ] && cout "ERRO" "'${tool}' not present. Aborting execution." && exit 2; done
 
   ##tmp folder writable?
   if [ -d ${PTH} ]; then
-    ${BIN}touch ${PTH}/test; [ $? -ne 0 ] && cout "ERRO" "Unable to write in '${PTH}'. Aborting execution." && exit 1
+    ${BIN}touch ${PTH}/test; [ $? -ne 0 ] && cout "ERRO" "Unable to write in '${PTH}'. Aborting execution." && exit 2
     ${BIN}rm ${PTH}/*.json ${PTH}/*.gv > /dev/null 2>&1
   else
-    ${BIN}mkdir ${PTH}; [ $? -ne 0 ] && cout "ERRO" "Unable to write in '${PTH}'. Aborting execution." && exit 1
+    ${BIN}mkdir ${PTH}; [ $? -ne 0 ] && cout "ERRO" "Unable to write in '${PTH}'. Aborting execution." && exit 2
   fi
-  cout "SUCC" ""
+  cout "SUCC"
 }
 
 #RELEASE CHECKING
@@ -143,15 +151,16 @@ function check_release()
     cout "WARN" "Unable to curl '${REL}'"
     cout "INPT" "Do you want to continue without sanity checks? (y/N):" "-n"
     read -t 10 yn
-    [[ ${yn} =~ ^([yY][eE][sS]|[yY])$ ]] && return || cout "ERRO" "Execution interrupted, try again later." && exit 1;
+    [ $? -ne 0 ] && cout "ERRO" "Selection timed out. Execution interrupted." && exit 3
+    [[ ${yn} =~ ^([yY][eE][sS]|[yY])$ ]] && return || cout "ERRO" "Invalid selection. Execution interrupted." && exit 3
   fi
   
   if [ "${MOD}" == "4.x" ]; then
     cout "INFO" "Checking if '${VER}' (${ARC}) has valid channels... " "-n"
     if [ "${ARC}" = "amd64" ]; then
-      ${BIN}grep "\"${VER}.*-x86_64\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERRO" "" && exit 1
+      ${BIN}grep "\"${VER}.*-x86_64\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERRO" && exit 1
     else
-      ${BIN}grep "\"${VER}.*-${ARC}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERRO" "" && exit 1
+      ${BIN}grep "\"${VER}.*-${ARC}\"" ${PTH}/${RELf} &>/dev/null; [ $? -ne 0 ] && cout "ERRO" && exit 1
     fi
   else
     cout "INFO" "Checking if '${VER}' (${ARC}) is a valid release... " "-n"
@@ -160,14 +169,14 @@ function check_release()
       ##for amd64 make an extra attempt without -x86_64 because old releases don't have any suffix
       if [ $? -ne 0 ]; then
         ${BIN}grep "\"${VER}\"" ${PTH}/${RELf} &>/dev/null
-	[ $? -ne 0 ] && cout "ERRO" "" && cout "HINT" "Run the script without parameters to see the all available options." && exit 1
+	[ $? -ne 0 ] && cout "ERRO" && cout "HINT" "Run the script without parameters to see all the available options." && exit 1
       fi
     else
       ${BIN}grep "\"${VER}-${ARC}\"" ${PTH}/${RELf} &>/dev/null
-      [ $? -ne 0 ] && cout "ERRO" "" && cout "HINT" "Run the script without parameters to see all available options." && exit 1
+      [ $? -ne 0 ] && cout "ERRO" && cout "HINT" "Run the script without parameters to see all the available options." && exit 1
     fi
   fi
-  cout "SUCC" ""
+  cout "SUCC"
 }
 
 #OBTAIN UPGRADE PATHS JSONs
@@ -178,7 +187,7 @@ function get_paths()
 
   for chan in "${CHA[@]}"; do
     ${BIN}curl -sH 'Accept:application/json' "${GPH}?channel=${chan}-${TRG}&arch=${ARC}" > ${PTH}/${chan}-${TRG}.json
-    [[ $? -ne 0 ]] && cout "ERRO" "Unable to curl '${GPH}?channel=${chan}-${TRG}&arch=${ARC}'" && cout "ERRO" "Execution interrupted, try again later." && exit 1
+    [[ $? -ne 0 ]] && cout "ERRO" "Unable to curl '${GPH}?channel=${chan}-${TRG}&arch=${ARC}'" && cout "ERRO" "Execution interrupted, try again later." && exit 3
     ##discard empty channels
     ${BIN}echo -n '{"nodes":[],"edges":[]}' | ${BIN}diff ${PTH}/${chan}-${TRG}.json - &>/dev/null
     [ $? -eq 0 ] && cout "WARN" "Skipping channel '${chan}-${TRG}_${ARC}', it's empty." && continue
@@ -199,7 +208,7 @@ function get_paths()
       read -t 10 yn
       [[ ${yn} =~ ^([yY][eE][sS]|[yY])$ ]] && return 2
     fi
-    cout "ERRO" "There are no channels to process. Aborting execution." && exit 1;
+    cout "ERRO" "There are no channels to process. Aborting execution." && exit 2
   fi
 }
 
@@ -222,7 +231,7 @@ function capture_lts()
 function json2gv()
 {
   [[ -z ${1-} ]] && sub="0" || sub="$1"
-  local mult="$(( ${sub} * 1000 ))"
+  local mult="$(( ${sub} * 1000 ))" #multiplier to avoid node numbering overlapping between subgraphs
 
   ##prepare the raw jq filter
   if [ "${MOD}" == "4.x.z-" ]; then
@@ -269,13 +278,14 @@ function json2gv()
   ##generate the gv files
   for chan in "${CHA[@]}"; do
     ${BIN}jq -r "${JQ_SCRIPT}" ${PTH}/${chan}-${TRG}.json > ${PTH}/${chan}-${TRG}_${VER}.gv
-    [[ $? -ne 0 ]] && cout "ERRO" "Unable to create ${PTH}/${chan}-${TRG}_${VER}.gv file. Aborting execution." && exit 1
+    [[ $? -ne 0 ]] && cout "ERRO" "Unable to create ${PTH}/${chan}-${TRG}_${VER}.gv file. Aborting execution." && exit 2
   done
 }
 
 #DISCARD CHANNELS & COLORIZE EDGES ##TODO: move this logic into JQ_SCRIPT?
 function colorize()
 {
+  RESt=("${RES[@]}") #capture the previous contents for multigraph corner case (if needed)
   RES=() #re-initialize the array in case of channel discarding
 
   for chan in "${CHA[@]}"; do
@@ -306,8 +316,8 @@ function colorize()
         for node in "${IND[@]}"; do
           ##Direct edges
           if [ "${node}" = "${posT}" ]; then
-            ${BIN}sed -i -e 's/^\(\s\s'"${posV}"'->'"${posT}"'\)\;$/\1 [color='"${EDGt}"'\,style=bold];/' ${PTH}/${chan}-${TRG}_${VER}.gv
-            ${BIN}sed -i -e 's/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}_${VER}.gv
+            ${BIN}sed -i -e 's/^\(\s\s'"${posV}"'->'"${posT}"'\)\;$/\1 \[color='"${EDGt}"'\,style=bold\];/' ${PTH}/${chan}-${TRG}_${VER}.gv
+            ${BIN}sed -i -e 's/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' \]\;/' ${PTH}/${chan}-${TRG}_${VER}.gv
             continue
           fi
           ##Indirect edges
@@ -315,9 +325,9 @@ function colorize()
           ${BIN}grep "\s\s${node}->${posT};" ${PTH}/${chan}-${TRG}_${VER}.gv &>/dev/null
           if [ $? -eq 0 ]; then
             ##if match, colorize indirect node, indirect edge & target node
-            ${BIN}sed -i -e 's/^\(\s\s'"${node}"'\s.*\),color=.*$/\1,color='"${NODi}"' ]\;/' ${PTH}/${chan}-${TRG}_${VER}.gv
-            ${BIN}sed -i -e 's/^\(\s\s'"${node}"'->'"${posT}"'\)\;$/\1 [color='"${EDGs}"',style=dashed];/' ${PTH}/${chan}-${TRG}_${VER}.gv
-            ${BIN}sed -i -e 's/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' ]\;/' ${PTH}/${chan}-${TRG}_${VER}.gv
+            ${BIN}sed -i -e 's/^\(\s\s'"${node}"'\s.*\),color=.*$/\1,color='"${NODi}"' \]\;/' ${PTH}/${chan}-${TRG}_${VER}.gv
+            ${BIN}sed -i -e 's/^\(\s\s'"${node}"'->'"${posT}"'\)\;$/\1 \[color='"${EDGs}"',style=dashed\];/' ${PTH}/${chan}-${TRG}_${VER}.gv
+            ${BIN}sed -i -e 's/^\(\s\s'"${posT}"'\s.*\),color=.*$/\1,color='"${NODt}"' \]\;/' ${PTH}/${chan}-${TRG}_${VER}.gv
             ##save final list of indirect nodes to be used below for pending source edges
             EXT=("${EXT[@]}" "${node}")
           fi
@@ -327,7 +337,7 @@ function colorize()
 
     ##colorize rest of source edges not yet processed
     for node in "${EXT[@]}"; do
-      ${BIN}sed -i -e 's/^\(\s\s'"${posV}"'->'"${node}"'\)\;$/\1 [color='"${EDGs}"',style=filled];/' ${PTH}/${chan}-${TRG}_${VER}.gv
+      ${BIN}sed -i -e 's/^\(\s\s'"${posV}"'->'"${node}"'\)\;$/\1 \[color='"${EDGs}"',style=filled\];/' ${PTH}/${chan}-${TRG}_${VER}.gv
     done
 
     ##remove non involved nodes (with def color) + edges (without color) to simplify the graph
@@ -343,11 +353,12 @@ function colorize()
   ##abort if the provided release is not present within any of the channels
   if [ ${#RES[@]} -eq 0 ];then
     if [ "${MOD}" == "4.x.z-" ]; then
+      RES=("${RESt[@]}") #grab the previous content in case of dead paths
       return 1
     else
       cout "ERRO" "Version '${VER}' not found (or not upgradable) within '${TRG}' channels. Aborting execution."
       cout "HINT" "Run the script without parameters to see other available modes."
-      exit 1
+      exit 2
     fi
   elif [ "${MOD}" == "4.x.z-" ]; then
     return 2
@@ -376,6 +387,8 @@ function draw()
   [[ -z ${1-} ]] && ver="${VER}" || ver=$1
   local date="$(${BIN}date +%Y%m%d)"
 
+  [[ ${#RES[@]} -eq 0 ]] && cout "ERRO" "No channels to export, unexpected error. Aborting execution." && exit 2
+
   ##Mode selector
   case "${MOD}" in
   ###Default channels
@@ -384,7 +397,7 @@ function draw()
       ${BIN}dot -Tsvg ${PTH}/${chan}-${TRG}_${ver}.gv -o ${chan}-${TRG}_${ARC}_${date}.svg
       if [ $? -ne 0 ]; then
         cout "ERRO" "Unable to export the results. Aborting execution."
-        exit 1
+        exit 2
       else
         cout "INFO" "Result exported as '${chan}-${TRG}_${ARC}_${date}.svg'"
       fi
@@ -396,7 +409,7 @@ function draw()
       ${BIN}dot -Tsvg ${PTH}/${chan}-${TRG}_${ver}.gv -o ${chan}-${TRG}_${ver}_${ARC}_${date}.svg 
       if [ $? -ne 0 ]; then
         cout "ERRO" "Unable to export the results. Aborting execution."
-        exit 1
+        exit 2
       else
         cout "INFO" "Result exported as '${chan}-${TRG}_${ver}_${ARC}_${date}.svg'"
       fi
@@ -408,7 +421,7 @@ function draw()
       ${BIN}dot -Tsvg ${PTH}/${chan}-multigraph.gv -o ${chan}-multigraph_${ver}-${TRG}_${ARC}_${date}.svg
       if [ $? -ne 0 ]; then
         cout "ERRO" "Unable to export the results. Aborting execution."
-        exit 1
+        exit 2
       else
         cout "INFO" "Result exported as '${chan}-multigraph_${ver}-${TRG}_${ARC}_${date}.svg'"
       fi
@@ -456,38 +469,55 @@ function main()
     label
     draw
   ;;
-  ###Multigraph mode (experimental)
+  ###Multigraph mode
   "4.x.z-")
     if [ "$(${BIN}echo ${TRG} | ${BIN}cut -d. -f1)" != "${MAJ}" ]; then
       cout "ERRO" "Multigraph mode can't target different major versions (${VER} !-> ${TRG}). Aborting execution."
-      exit 1
+      exit 2
+    elif [ "$(${BIN}echo ${TRG} | ${BIN}cut -d. -f2)" -le "${MIN}" ]; then
+      cout "ERRO" "Multigraph mode can only target higher minor versions. Aborting execution."
+      exit 2
     fi
+
     cout "INFO" "Detected mode '${MOD}', targeting channels '$(${BIN}echo "${TRGa[@]}")' for multigraph generation."
-    cout "WARN" "This is an EXPERIMENTAL mode targeting only 2 latest releases per channel."
-    cout "INPT" "Select channel type from the list" "-n"
-    ${BIN}echo -n " [$(${BIN}echo "${CHANDEF[@]}")]: "
-    read -t 20 chan
+    ##channel selection (default: first channel in the list)
+    cout "INPT" "Select channel from [$(${BIN}echo "${CHANDEF[@]}")], press Enter for default value (${CHANDEF[0]}): " "-n"
+    read -t 10 chan
+    [ $? -ne 0 ] && cout "ERRO" "Selection timed out. Execution interrupted." && exit 3
+    chan=${chan:-"${CHANDEF[0]}"}
     local match="false" #make the channel selection dynamic
     for opt in "${CHA[@]}"; do [[ "${opt}" != "${chan}" ]] && continue || match="true"; done
-    [[ "${match}" != "true" ]] && cout "ERRO" "Invalid selection or timed out. Execution interrupted." && exit 1
+    [[ "${match}" != "true" ]] && cout "ERRO" "Invalid selection. Execution interrupted." && exit 3
+    ##max depth selection (default: 2)
+    cout "INPT" "Select max depth between [1-9], press Enter for default value (2): " "-n"
+    read -t 10 max_depth
+    max_depth=${max_depth:-"2"}
+    [ $? -ne 0 ] && cout "ERRO" "Selection timed out. Execution interrupted." && exit 3
+    ! [[ "${max_depth}" =~ ^[1-9]$ ]] && cout "ERRO" "Invalid selection. Execution interrupted." && exit 3
+    local total=$((${#TRGa[@]} * ${max_depth}))
+    [[ ${total} -gt 10 ]] && cout "WARN" "Targeting '${#TRGa[@]}' diff minor versions with '${max_depth}' releases per target (${total} edges), please be patient."
+
+    ##execute initial target iteration
     CHA=("${chan}")
     local verI="${VER}" #save the initial version value for multigraph draw function
     TRG="${TRGa[0]}"
     cout "INFO" "Processing '${chan}-${TRG}' edges... "
     local i=1
     get_paths
-    capture_lts "2" #limited to the latest 2 targets to simplify the graph
+    capture_lts "${max_depth}"
     json2gv "${i}"
     colorize
     if [ $? -eq 1 ]; then
       cout "ERRO" "Version '${VER}' not found (or not upgradable) within '${TRG}' channel. Aborting execution."
       cout "HINT" "Run the script without parameters to see other available modes."
-      exit 1
+      exit 2
     fi
     label
     ${BIN}cat ${PTH}/${chan}-${TRG}_${VER}.gv >> ${PTH}/${chan}-multigraph.gv #always dump the first target
-    [ $? -ne 0 ] && cout "ERRO" "Unable to write in '${PTH}'. Aborting execution." && exit 1
+    [ $? -ne 0 ] && cout "ERRO" "Unable to write in '${PTH}'. Aborting execution." && exit 2
     (( i++ ))
+
+    local posVd=() #array of possible dead nodes (no upgradable to latest target)
     ##go through the next targets
     for target in "${TRGa[@]}"; do
       [[ ${TRG} == ${target} ]] && continue # skip first target from the list (already processed)
@@ -502,14 +532,16 @@ function main()
       for lts in "${!ltsA}"; do
         VER="${lts}"
         get_paths
-        capture_lts "2" #limited to the latest 2 targets to simplify the graph
+        capture_lts "${max_depth}"
         json2gv "${i}"
         colorize
         if [ $? -eq 2 ]; then
           label
           ${BIN}cp -p ${PTH}/${chan}-${TRG}_${VER}.gv ${PTH}/${chan}-${TRG}_tmp.gv #overwrite and keep the latest run (more nodes)
-          [ $? -ne 0 ] && cout "ERRO" "Unable to write in '${PTH}'. Aborting execution." && exit 1
+          [ $? -ne 0 ] && cout "ERRO" "Unable to write in '${PTH}'. Aborting execution." && exit 2
           posVp=("${posVp[@]}" "$(${BIN}grep "\"${VER}\"" ${PTH}/${chan}-multigraph.gv | awk {'print $1'})")
+        else
+          posVd=("${posVd[@]}" "$(${BIN}grep "\"${VER}\"" ${PTH}/${chan}-multigraph.gv | awk {'print $1'})")
         fi
         (( i++ ))
       done
@@ -526,12 +558,19 @@ function main()
           ${BIN}sed -i -e 's/^\s\s'"${posVc[j]}"'->/  '"${posVp[j]}"'->/g' ${PTH}/${chan}-${TRG}_tmp.gv
         done
         ${BIN}cat ${PTH}/${chan}-${TRG}_tmp.gv >> ${PTH}/${chan}-multigraph.gv #concatenate subgraph within multigraph
-        [ $? -ne 0 ] && cout "ERRO" "Unable to write in '${PTH}'. Aborting execution." && exit 1
+        [ $? -ne 0 ] && cout "ERRO" "Unable to write in '${PTH}'. Aborting execution." && exit 2
+      else
+        cout "ERRO" "No upgradable paths found for target '${TRG}'. Aborting execution." && exit 2
       fi
     done
   ${BIN}echo "}" >> ${PTH}/${chan}-multigraph.gv
-  [ $? -ne 0 ] && cout "ERRO" "Unable to write in '${PTH}'. Aborting execution." && exit 1
-  ${BIN}sed -i -e 's/^}$/'"${KEY}"'/' ${PTH}/${chan}-multigraph.gv
+  [ $? -ne 0 ] && cout "ERRO" "Unable to write in '${PTH}'. Aborting execution." && exit 2
+  ##change color of dead paths (if any)
+  for (( j=0; j<${#posVd[@]}; j++ )); do
+    ${BIN}sed -i -e 's/^\(\s\s.*->'"${posVd[j]}"'\).*;$/\1 \[color='"${DEF}"'\,style=bold\];/g' ${PTH}/${chan}-multigraph.gv
+  done
+  ##insert legend (key)
+  ${BIN}sed -i -e 's/^}$/'"${KEYm}"'/' ${PTH}/${chan}-multigraph.gv
   draw "${verI}"
   ;;
   *)
