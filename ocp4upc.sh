@@ -482,7 +482,7 @@ function main()
     cout "INFO" "Detected mode '${MOD}', targeting channels '$(${BIN}echo "${TRGa[@]}")' for multigraph generation."
     ##channel selection (default: first channel in the list)
     cout "INPT" "Select channel from [$(${BIN}echo "${CHANDEF[@]}")], press Enter for default value (${CHANDEF[0]}): " "-n"
-    read -t 10 chan
+    [ -z ${chan+x} ] && read -t 10 chan
     [ $? -ne 0 ] && cout "ERRO" "Selection timed out. Execution interrupted." && exit 3
     chan=${chan:-"${CHANDEF[0]}"}
     local match="false" #make the channel selection dynamic
@@ -490,7 +490,7 @@ function main()
     [[ "${match}" != "true" ]] && cout "ERRO" "Invalid selection. Execution interrupted." && exit 3
     ##max depth selection (default: 2)
     cout "INPT" "Select max depth between [1-9], press Enter for default value (2): " "-n"
-    read -t 10 max_depth
+    [ -z ${max_depth+x} ] && read -t 10 max_depth
     max_depth=${max_depth:-"2"}
     [ $? -ne 0 ] && cout "ERRO" "Selection timed out. Execution interrupted." && exit 3
     ! [[ "${max_depth}" =~ ^[1-9]$ ]] && cout "ERRO" "Invalid selection. Execution interrupted." && exit 3
