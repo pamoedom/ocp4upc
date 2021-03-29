@@ -481,7 +481,7 @@ function main()
 
     cout "INFO" "Detected mode '${MOD}', targeting channels '$(${BIN}echo "${TRGa[@]}")' for multigraph generation."
     
-    if [ -z ${channel+x} ];
+    if [ ! -z ${channel+x} ];
     then
       chan=${channel+x}
     else
@@ -496,7 +496,7 @@ function main()
     for opt in "${CHA[@]}"; do [[ "${opt}" != "${chan}" ]] && continue || match="true"; done
     [[ "${match}" != "true" ]] && cout "ERRO" "Invalid selection. Execution interrupted." && exit 3
     
-    if [ -z ${depth+x} ];
+    if [ ! -z ${depth+x} ];
     then
       max_depth=${depth+x}
     else
