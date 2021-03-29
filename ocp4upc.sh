@@ -63,10 +63,6 @@ function declare_vars()
   [[ ${#args[1]} -lt 3 ]] && usage || VER=${args[1]}
   [[ -z ${args[2]-} ]] && ARC="amd64" || ARC=${args[2]}
   
-  [ -z ${version+x} ] && VER=$version
-  [ -z ${arch+x} ] && ARC=$arch
-
-
   ##Target channel calculation & mode detection
   ! [[ ${VER} =~ ^[0-9]([.][0-9]+)([.][0-9]+|$).*$ ]] && usage
   MAJ=$(${BIN}echo ${VER} | ${BIN}cut -d. -f1)
@@ -486,6 +482,7 @@ function main()
     cout "INFO" "Detected mode '${MOD}', targeting channels '$(${BIN}echo "${TRGa[@]}")' for multigraph generation."
     ##channel selection (default: first channel in the list)
     cout "INPT" "Select channel from [$(${BIN}echo "${CHANDEF[@]}")], press Enter for default value (${CHANDEF[0]}): " "-n"
+    
     read -t 10 chan
     [ $? -ne 0 ] && cout "ERRO" "Selection timed out. Execution interrupted." && exit 3
     chan=${chan:-"${CHANDEF[0]}"}
