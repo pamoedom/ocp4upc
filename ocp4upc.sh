@@ -481,17 +481,16 @@ function main()
 
     cout "INFO" "Detected mode '${MOD}', targeting channels '$(${BIN}echo "${TRGa[@]}")' for multigraph generation."
     
-    
     if [ -z ${chan+x} ]
     then
       ##channel selection (default: first channel in the list)
       cout "INPT" "Select channel from [$(${BIN}echo "${CHANDEF[@]}")], press Enter for default value (${CHANDEF[0]}): " "-n"
       read -t 10 chan
       [ $? -ne 0 ] && cout "ERRO" "Selection timed out. Execution interrupted." && exit 3
-      chan=${chan:-"${CHANDEF[0]}"}
+      
     fi
-
     
+    chan=${chan:-"${CHANDEF[0]}"}
     local match="false" #make the channel selection dynamic
     for opt in "${CHA[@]}"; do [[ "${opt}" != "${chan}" ]] && continue || match="true"; done
     [[ "${match}" != "true" ]] && cout "ERRO" "Invalid selection. Execution interrupted." && exit 3
