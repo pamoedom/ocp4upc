@@ -2,11 +2,9 @@ FROM alpine:latest
 
 LABEL MAINTAINER="Sebastian Zoll"
 
+ADD ocp4upc.sh /bin/ocp4upc.sh
 RUN apk add --no-cache \
-    curl jq graphviz git bash \
-    && cd / \
-    && git clone https://github.com/sips4711/ocp4upc.git \
-    && mv ocp4upc/ocp4upc.sh /bin/ \
+    curl jq graphviz bash \
     && chmod 777 /bin/ocp4upc.sh
 
 WORKDIR /documents
