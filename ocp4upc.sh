@@ -480,20 +480,34 @@ function main()
     fi
 
     cout "INFO" "Detected mode '${MOD}', targeting channels '$(${BIN}echo "${TRGa[@]}")' for multigraph generation."
-    ##channel selection (default: first channel in the list)
-    cout "INPT" "Select channel from [$(${BIN}echo "${CHANDEF[@]}")], press Enter for default value (${CHANDEF[0]}): " "-n"
     
-    read -t 10 chan
-    [ $? -ne 0 ] && cout "ERRO" "Selection timed out. Execution interrupted." && exit 3
+    if [ -z ${channel+x} ];
+    then
+      chan=${channel+x}
+    else
+      ##channel selection (default: first channel in the list)
+      cout "INPT" "Select channel from [$(${BIN}echo "${CHANDEF[@]}")], press Enter for default value (${CHANDEF[0]}): " "-n"
+      read -t 10 chan
+      [ $? -ne 0 ] && cout "ERRO" "Selection timed out. Execution interrupted." && exit 3
+    fi
+
     chan=${chan:-"${CHANDEF[0]}"}
     local match="false" #make the channel selection dynamic
     for opt in "${CHA[@]}"; do [[ "${opt}" != "${chan}" ]] && continue || match="true"; done
     [[ "${match}" != "true" ]] && cout "ERRO" "Invalid selection. Execution interrupted." && exit 3
-    ##max depth selection (default: 2)
-    cout "INPT" "Select max depth between [1-9], press Enter for default value (2): " "-n"
-    read -t 10 max_depth
-    max_depth=${max_depth:-"2"}
-    [ $? -ne 0 ] && cout "ERRO" "Selection timed out. Execution interrupted." && exit 3
+    
+    if [ -z ${depth+x} ];
+    then
+      max_depth=${depth+x}
+    else
+      ##max depth selection (default: 2)
+      cout "INPT" "Select max depth between [1-9], press Enter for default value (2): " "-n"
+      read -t 10 max_depth
+      max_depth=${max_depth:-"2"}
+      [ $? -ne 0 ] && cout "ERRO" "Selection timed out. Execution interrupted." && exit 3
+    fi
+    
+    
     ! [[ "${max_depth}" =~ ^[1-9]$ ]] && cout "ERRO" "Invalid selection. Execution interrupted." && exit 3
     local total=$((${#TRGa[@]} * ${max_depth}))
     [[ ${total} -gt 10 ]] && cout "WARN" "Targeting '${#TRGa[@]}' diff minor versions with '${max_depth}' releases per target (${total} edges), please be patient."
