@@ -36,6 +36,13 @@ ppc64le    POWER8/9 little endian
 -----------------------------------------------------------------
 ~~~
 
+## Podman (Docker) Example 
+~~~
+$ podman build -t localhost/ocp4upc .
+$ podman run --rm -it -v $(pwd):/documents localhost/ocp4upc ocp4upc.sh 4.1.34-4.7
+~~~
+
+
 ## Examples
 ~~~
 $ ocp4upc.sh 4.6.15
