@@ -483,7 +483,7 @@ function main()
     
     if [ ! -z ${channel+x} ];
     then
-      chan=${channel+x}
+      chan=${channel}
     else
       ##channel selection (default: first channel in the list)
       cout "INPT" "Select channel from [$(${BIN}echo "${CHANDEF[@]}")], press Enter for default value (${CHANDEF[0]}): " "-n"
@@ -498,7 +498,7 @@ function main()
     
     if [ ! -z ${depth+x} ];
     then
-      max_depth=${depth+x}
+      max_depth=${depth}
     else
       ##max depth selection (default: 2)
       cout "INPT" "Select max depth between [1-9], press Enter for default value (2): " "-n"
